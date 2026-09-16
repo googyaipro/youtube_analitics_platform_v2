@@ -1,0 +1,219 @@
+import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
+
+from backend.models.channel import Channel
+from backend.models.video import Video
+from config.settings import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+class BigQueryService:
+    def __init__(self):
+        settings = get_settings()
+        self.project_id = settings.GCP_PROJECT_ID
+        self.dataset_id = settings.BIGQUERY_DATASET_ID
+        self.location = settings.GCP_LOCATION
+        self._client: Optional[bigquery.Client] = None
+        
+        # In-memory storage fallback for local development without active GCP credentials
+        self._mock_channels: Dict[str, Dict[str, Any]] = {}
+        self._mock_videos: Dict[str, Dict[str, Any]] = {}
+
+        try:
+            self._client = bigquery.Client(project=self.project_id, location=self.location)
+            logger.info("Google Cloud BigQuery client initialized.")
+        except Exception as e:
+            logger.warning(f"BigQuery client initialization failed (using local in-memory fallback): {e}")
+
+    @property
+    def is_connected(self) -> bool:
+        return self._client is not None
+
+    def init_dataset_and_tables(self) -> bool:
+        """Create BigQuery dataset and analytical tables if they don't exist."""
+        if not self.is_connected:
+            logger.info("BigQuery not connected. Tables initialized in memory.")
+            return True
+
+        try:
+            dataset_ref = f"{self.project_id}.{self.dataset_id}"
+            dataset = bigquery.Dataset(dataset_ref)
+            dataset.location = self.location
+            self._client.create_dataset(dataset, exists_ok=True)
+            logger.info(f"Dataset {dataset_ref} verified/created.")
+
+            # 1. Channels Table Schema
+            channels_table_ref = f"{dataset_ref}.channels"
+            channels_schema = [
+                bigquery.SchemaField("channel_id", "STRING", mode="REQUIRED"),
+                bigquery.SchemaField("title", "STRING", mode="NULLABLE"),
+                bigquery.SchemaField("custom_url", "STRING", mode="NULLABLE"),
+                bigquery.SchemaField("description", "STRING", mode="NULLABLE"),
+                bigquery.SchemaField("subscriber_count", "INT64", mode="NULLABLE"),
+                bigquery.SchemaField("view_count", "INT64", mode="NULLABLE"),
+                bigquery.SchemaField("video_count", "INT64", mode="NULLABLE"),
+                bigquery.SchemaField("country", "STRING", mode="NULLABLE"),
+                bigquery.SchemaField("published_at", "TIMESTAMP", mode="NULLABLE"),
+                bigquery.SchemaField("updated_at", "TIMESTAMP", mode="REQUIRED"),
+            ]
+            channels_table = bigquery.Table(channels_table_ref, schema=channels_schema)
+            self._client.create_table(channels_table, exists_ok=True)
+
+            # 2. Video Metrics Table Schema
+            videos_table_ref = f"{dataset_ref}.video_metrics"
+            videos_schema = [
+                bigquery.SchemaField("video_id", "STRING", mode="REQUIRED"),
+                bigquery.SchemaField("channel_id", "STRING", mode="REQUIRED"),
+                bigquery.SchemaField("channel_title", "STRING", mode="NULLABLE"),
+                bigquery.SchemaField("title", "STRING", mode="REQUIRED"),
+                bigquery.SchemaField("description", "STRING", mode="NULLABLE"),
+                bigquery.SchemaField("published_at", "TIMESTAMP", mode="REQUIRED"),
+                bigquery.SchemaField("view_count", "INT64", mode="REQUIRED"),
+                bigquery.SchemaField("like_count", "INT64", mode="NULLABLE"),
+                bigquery.SchemaField("comment_count", "INT64", mode="NULLABLE"),
+                bigquery.SchemaField("duration", "STRING", mode="NULLABLE"),
+                bigquery.SchemaField("thumbnail_url", "STRING", mode="NULLABLE"),
+                bigquery.SchemaField("extracted_at", "TIMESTAMP", mode="REQUIRED"),
+            ]
+            videos_table = bigquery.Table(videos_table_ref, schema=videos_schema)
+            self._client.create_table(videos_table, exists_ok=True)
+            logger.info("BigQuery tables verified/created successfully.")
+            return True
+        except Exception as e:
+            logger.error(f"Error initializing BigQuery resources: {e}")
+            return False
+
+    def insert_channel(self, channel: Channel) -> bool:
+        row = {
+            "channel_id": channel.channel_id,
+            "title": channel.snippet.title,
+            "custom_url": channel.snippet.custom_url,
+            "description": channel.snippet.description,
+            "subscriber_count": channel.statistics.subscriber_count,
+            "view_count": channel.statistics.view_count,
+            "video_count": channel.statistics.video_count,
+            "country": channel.snippet.country,
+            "published_at": channel.snippet.published_at.isoformat() if channel.snippet.published_at else None,
+            "updated_at": channel.extracted_at.isoformat(),
+        }
+        self._mock_channels[channel.channel_id] = row
+
+        if not self.is_connected:
+            return True
+
+        try:
+            table_ref = f"{self.project_id}.{self.dataset_id}.channels"
+            errors = self._client.insert_rows_json(table_ref, [row])
+            if errors:
+                logger.error(f"Errors inserting channel to BigQuery: {errors}")
+                return False
+            return True
+        except Exception as e:
+            logger.error(f"Exception inserting channel to BigQuery: {e}")
+            return False
+
+    def insert_videos(self, videos: List[Video]) -> bool:
+        rows = []
+        for v in videos:
+            row = {
+                "video_id": v.video_id,
+                "channel_id": v.snippet.channel_id,
+                "channel_title": v.snippet.channel_title,
+                "title": v.snippet.title,
+                "description": v.snippet.description,
+                "published_at": v.snippet.published_at.isoformat(),
+                "view_count": v.statistics.view_count,
+                "like_count": v.statistics.like_count,
+                "comment_count": v.statistics.comment_count,
+                "duration": v.duration,
+                "thumbnail_url": v.snippet.thumbnail_url,
+                "extracted_at": v.extracted_at.isoformat(),
+            }
+            rows.append(row)
+            self._mock_videos[v.video_id] = row
+
+        if not self.is_connected:
+            return True
+
+        try:
+            table_ref = f"{self.project_id}.{self.dataset_id}.video_metrics"
+            errors = self._client.insert_rows_json(table_ref, rows)
+            if errors:
+                logger.error(f"Errors inserting videos into BigQuery: {errors}")
+                return False
+            return True
+        except Exception as e:
+            logger.error(f"Exception inserting videos into BigQuery: {e}")
+            return False
+
+    def get_channels(self) -> List[Dict[str, Any]]:
+        if not self.is_connected:
+            return list(self._mock_channels.values())
+
+        try:
+            query = f"""
+                SELECT channel_id, title, custom_url, subscriber_count, view_count, video_count, country, published_at, updated_at
+                FROM `{self.project_id}.{self.dataset_id}.channels`
+                ORDER BY updated_at DESC
+            """
+            job = self._client.query(query)
+            return [dict(row) for row in job.result()]
+        except Exception as e:
+            logger.warning(f"Error querying BigQuery channels ({e}), falling back to cache.")
+            return list(self._mock_channels.values())
+
+    def get_videos(self, channel_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        if not self.is_connected:
+            vids = list(self._mock_videos.values())
+            if channel_id:
+                vids = [v for v in vids if v.get("channel_id") == channel_id]
+            vids.sort(key=lambda x: x.get("view_count", 0), reverse=True)
+            return vids[:limit]
+
+        try:
+            where_clause = f"WHERE channel_id = '{channel_id}'" if channel_id else ""
+            query = f"""
+                SELECT video_id, channel_id, channel_title, title, description, published_at,
+                       view_count, like_count, comment_count, duration, thumbnail_url, extracted_at
+                FROM `{self.project_id}.{self.dataset_id}.video_metrics`
+                {where_clause}
+                ORDER BY view_count DESC
+                LIMIT {limit}
+            """
+            job = self._client.query(query)
+            return [dict(row) for row in job.result()]
+        except Exception as e:
+            logger.warning(f"Error querying BigQuery videos ({e}), falling back to cache.")
+            vids = list(self._mock_videos.values())
+            if channel_id:
+                vids = [v for v in vids if v.get("channel_id") == channel_id]
+            return vids[:limit]
+
+    def get_kpis(self) -> Dict[str, Any]:
+        videos = self.get_videos(limit=500)
+        channels = self.get_channels()
+
+        total_views = sum(v.get("view_count", 0) for v in videos)
+        total_likes = sum(v.get("like_count", 0) for v in videos)
+        total_comments = sum(v.get("comment_count", 0) for v in videos)
+        total_subscribers = sum(c.get("subscriber_count", 0) for c in channels)
+
+        engagement_rate = (
+            (total_likes + total_comments) / total_views * 100
+            if total_views > 0
+            else 0.0
+        )
+
+        return {
+            "total_channels": len(channels),
+            "total_videos": len(videos),
+            "total_views": total_views,
+            "total_likes": total_likes,
+            "total_comments": total_comments,
+            "total_subscribers": total_subscribers,
+            "engagement_rate_pct": round(engagement_rate, 2),
+        }
