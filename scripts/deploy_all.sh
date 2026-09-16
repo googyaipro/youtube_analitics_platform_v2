@@ -8,6 +8,13 @@
 
 set -eo pipefail
 
+# Load environment variables if .env exists
+if [ -f .env ]; then
+    set -a
+    source .env
+    set +a
+fi
+
 PROJECT_ID=$(gcloud config get-value project 2>/dev/null || echo "gen-lang-client-0428255657")
 REGION="us-central1"
 REGISTRY="us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy"
@@ -50,7 +57,7 @@ gcloud run deploy youtube-analyst-backend \
     --cpu 1 \
     --min-instances 0 \
     --max-instances 10 \
-    --set-env-vars "SANDBOX_SERVICE_URL=${SANDBOX_URL},GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${REGION},GEMINI_MODEL=gemini-3.5-flash" \
+    --set-env-vars "SANDBOX_SERVICE_URL=${SANDBOX_URL},GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${REGION},GEMINI_MODEL=gemini-3.5-flash,YOUTUBE_API_KEY=${YOUTUBE_API_KEY},TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN},TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET},BIGQUERY_DATASET_ID=${BIGQUERY_DATASET_ID:-youtube_analytics},GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-gen-lang-client-0428255657-yt-raw-data},CLOUD_TASKS_QUEUE=${CLOUD_TASKS_QUEUE:-telegram-tasks}" \
     --project "${PROJECT_ID}" \
     --allow-unauthenticated
 
