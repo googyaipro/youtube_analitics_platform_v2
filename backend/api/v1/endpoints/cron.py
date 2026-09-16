@@ -4,6 +4,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, Header, HTTPException
 
 from backend.services.bigquery_service import BigQueryService
+from backend.services.firestore_cache import FirestoreCache
 from backend.services.gemini_service import GeminiService
 from backend.services.telegram_bot import TelegramBotService
 from backend.services.youtube_client import YouTubeClient
@@ -17,6 +18,7 @@ yt = YouTubeClient()
 bq = BigQueryService()
 gemini = GeminiService()
 bot = TelegramBotService()
+cache = FirestoreCache()
 
 
 @router.post("/track-competitors")
@@ -76,10 +78,24 @@ async def track_competitors_cron(
     else:
         digest_text += "\nСтабильная динамика просмотров и подписчиков по всем отслеживаемым конкурентам."
 
-    logger.info("Competitor tracking job completed successfully.")
+    # 4. Broadcast to Telegram subscribers
+    subscribers = set(cache.get_telegram_subscribers())
+    if settings.TELEGRAM_ADMIN_CHAT_ID:
+        subscribers.add(str(settings.TELEGRAM_ADMIN_CHAT_ID))
+
+    sent_count = 0
+    for chat_id in subscribers:
+        try:
+            bot.send_message(chat_id=chat_id, text=digest_text)
+            sent_count += 1
+        except Exception as e:
+            logger.error(f"Failed to send morning digest to chat {chat_id}: {e}")
+
+    logger.info(f"Competitor tracking job completed. Sent digest to {sent_count} subscribers.")
     return {
         "status": "SUCCESS",
         "snapshots_processed": snapshots_saved,
         "anomalies_count": len(anomalies),
+        "telegram_subscribers_notified": sent_count,
         "digest": digest_text
     }

@@ -3,6 +3,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Request
 
 from backend.services.agent_orchestrator import AgentOrchestrator
+from backend.services.firestore_cache import FirestoreCache
 from backend.services.telegram_bot import TelegramBotService
 
 logger = logging.getLogger(__name__)
@@ -10,6 +11,7 @@ router = APIRouter(prefix="/tasks", tags=["Cloud Tasks Workers"])
 
 agent = AgentOrchestrator()
 bot = TelegramBotService()
+cache = FirestoreCache()
 
 
 def handle_telegram_update_internal(update: Dict[str, Any]):
@@ -22,6 +24,10 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
     text = message.get("text", "")
     if not chat_id or not text:
         return
+
+    # Register user as active subscriber for daily morning digests
+    from_user = message.get("from", {})
+    cache.register_telegram_subscriber(chat_id, from_user)
 
     # Handle /start command
     if text.strip() == "/start":

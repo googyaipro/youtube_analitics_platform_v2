@@ -95,3 +95,35 @@ class FirestoreCache:
                 return False
 
         return True
+
+    def register_telegram_subscriber(self, chat_id: int | str, user_info: Optional[Dict[str, Any]] = None):
+        """Register or update a Telegram user subscribed to daily morning digests."""
+        if not self.is_connected:
+            return
+        try:
+            doc_ref = self._db.collection("telegram_subscribers").document(str(chat_id))
+            payload = {
+                "chat_id": str(chat_id),
+                "is_active": True,
+                "updated_at": datetime.now(timezone.utc),
+            }
+            if user_info:
+                payload.update({
+                    "username": user_info.get("username"),
+                    "first_name": user_info.get("first_name"),
+                })
+            doc_ref.set(payload, merge=True)
+            logger.info(f"Registered Telegram subscriber: {chat_id}")
+        except Exception as e:
+            logger.error(f"Error registering Telegram subscriber: {e}")
+
+    def get_telegram_subscribers(self) -> list[str]:
+        """Get all active chat IDs subscribed to morning digests."""
+        if not self.is_connected:
+            return []
+        try:
+            docs = self._db.collection("telegram_subscribers").where("is_active", "==", True).stream()
+            return [doc.id for doc in docs]
+        except Exception as e:
+            logger.error(f"Error fetching subscribers from Firestore: {e}")
+            return []

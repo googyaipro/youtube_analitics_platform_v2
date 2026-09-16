@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     # Telegram Bot
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     TELEGRAM_WEBHOOK_SECRET: Optional[str] = "secret-tg-token-xyz"
+    TELEGRAM_ADMIN_CHAT_ID: Optional[str] = None
     
     # Google Cloud Platform
     GCP_PROJECT_ID: str = "gen-lang-client-0428255657"
