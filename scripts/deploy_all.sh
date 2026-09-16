@@ -48,6 +48,9 @@ echo "Sandbox URL: ${SANDBOX_URL}"
 # 2. Deploy Service 1: YouTube Analyst Backend
 # -------------------------------------------------------------
 echo "2. Building and deploying 'youtube-analyst-backend'..."
+EXISTING_BACKEND_URL=$(gcloud run services describe youtube-analyst-backend --region "${REGION}" --format="value(status.url)" --project "${PROJECT_ID}" 2>/dev/null || true)
+BACKEND_PUBLIC_URL="${BACKEND_PUBLIC_URL:-${EXISTING_BACKEND_URL}}"
+
 gcloud run deploy youtube-analyst-backend \
     --source . \
     --platform managed \
@@ -57,7 +60,7 @@ gcloud run deploy youtube-analyst-backend \
     --cpu 1 \
     --min-instances 0 \
     --max-instances 10 \
-    --set-env-vars "SANDBOX_SERVICE_URL=${SANDBOX_URL},GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${REGION},GEMINI_MODEL=gemini-3.5-flash,YOUTUBE_API_KEY=${YOUTUBE_API_KEY},TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN},TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET},BIGQUERY_DATASET_ID=${BIGQUERY_DATASET_ID:-youtube_analytics},GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-gen-lang-client-0428255657-yt-raw-data},CLOUD_TASKS_QUEUE=${CLOUD_TASKS_QUEUE:-telegram-tasks}" \
+    --set-env-vars "SANDBOX_SERVICE_URL=${SANDBOX_URL},GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${REGION},GEMINI_MODEL=gemini-3.5-flash,YOUTUBE_API_KEY=${YOUTUBE_API_KEY},TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN},TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET},BIGQUERY_DATASET_ID=${BIGQUERY_DATASET_ID:-youtube_analytics},GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-gen-lang-client-0428255657-yt-raw-data},CLOUD_TASKS_QUEUE=${CLOUD_TASKS_QUEUE:-telegram-tasks},BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL}" \
     --project "${PROJECT_ID}" \
     --allow-unauthenticated
 

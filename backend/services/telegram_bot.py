@@ -20,7 +20,7 @@ class TelegramBotService:
         return self.base_url is not None and " " not in self.token
 
     def send_message(self, chat_id: int | str, text: str, parse_mode: str = "Markdown") -> bool:
-        """Send a text message to Telegram user."""
+        """Send a text message to Telegram user with automatic fallback if Markdown parsing fails."""
         if not self.is_configured:
             logger.info(f"[MOCK TG SEND] to {chat_id}: {text}")
             return True
@@ -31,6 +31,12 @@ class TelegramBotService:
                     f"{self.base_url}/sendMessage",
                     json={"chat_id": chat_id, "text": text, "parse_mode": parse_mode}
                 )
+                if res.status_code != 200 and parse_mode:
+                    logger.warning(f"Telegram Markdown parse failed ({res.text}), retrying with plain text.")
+                    res = client.post(
+                        f"{self.base_url}/sendMessage",
+                        json={"chat_id": chat_id, "text": text}
+                    )
                 return res.status_code == 200
         except Exception as e:
             logger.error(f"Error sending Telegram message: {e}")
@@ -42,7 +48,7 @@ class TelegramBotService:
         png_base64: str,
         caption: Optional[str] = None
     ) -> bool:
-        """Send a base64 encoded PNG chart to Telegram."""
+        """Send a base64 encoded PNG chart to Telegram with fallback for caption format."""
         if not self.is_configured:
             logger.info(f"[MOCK TG PHOTO] to {chat_id} with caption: {caption}")
             return True
@@ -57,6 +63,10 @@ class TelegramBotService:
 
             with httpx.Client(timeout=20.0) as client:
                 res = client.post(f"{self.base_url}/sendPhoto", data=data, files=files)
+                if res.status_code != 200 and caption and "parse_mode" in data:
+                    del data["parse_mode"]
+                    files = {"photo": ("chart.png", image_bytes, "image/png")}
+                    res = client.post(f"{self.base_url}/sendPhoto", data=data, files=files)
                 return res.status_code == 200
         except Exception as e:
             logger.error(f"Error sending Telegram photo: {e}")

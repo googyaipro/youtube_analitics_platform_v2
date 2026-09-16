@@ -33,8 +33,13 @@ async def telegram_webhook(
     update_payload: Dict[str, Any] = await request.json()
     logger.info("Received Telegram update.")
 
+    # Determine public URL from Cloud Run request headers
+    proto = request.headers.get("x-forwarded-proto", "https")
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    request_base_url = f"{proto}://{host}" if host else None
+
     # 1. Enqueue to Cloud Tasks (Scale-to-Zero, full dedicated CPU on worker)
-    enqueued = tasks_service.enqueue_telegram_message(update_payload)
+    enqueued = tasks_service.enqueue_telegram_message(update_payload, base_url=request_base_url)
 
     # 2. Fallback to local background task if running in local development mode
     if not enqueued:

@@ -29,7 +29,8 @@ class CloudTasksService:
     def enqueue_telegram_message(
         self,
         update_data: Dict[str, Any],
-        relative_path: str = "/api/tasks/process-telegram-message"
+        relative_path: str = "/api/tasks/process-telegram-message",
+        base_url: Optional[str] = None
     ) -> bool:
         """Enqueue an HTTP task to Cloud Tasks to execute with full dedicated CPU."""
         if not self.is_connected:
@@ -37,7 +38,16 @@ class CloudTasksService:
 
         try:
             parent = self._client.queue_path(self.project_id, self.region, self.queue_name)
-            target_url = f"{self.backend_url.rstrip('/')}{relative_path}"
+            
+            # Select target URL: prefer explicit https base_url or configured public URL
+            chosen_url = self.backend_url
+            if base_url and (not chosen_url or "localhost" in chosen_url):
+                chosen_url = base_url
+            elif not chosen_url or "localhost" in chosen_url:
+                logger.error("Cloud Tasks requires a publicly reachable BACKEND_PUBLIC_URL (not localhost).")
+                return False
+
+            target_url = f"{chosen_url.rstrip('/')}{relative_path}"
 
             task = {
                 "http_request": {
@@ -49,7 +59,7 @@ class CloudTasksService:
             }
 
             response = self._client.create_task(request={"parent": parent, "task": task})
-            logger.info(f"Enqueued Cloud Task successfully: {response.name}")
+            logger.info(f"Enqueued Cloud Task successfully: {response.name} targeting {target_url}")
             return True
         except Exception as e:
             logger.error(f"Failed to enqueue task in Cloud Tasks: {e}")
