@@ -10,26 +10,32 @@ set -eo pipefail
 
 PROJECT_ID=$(gcloud config get-value project 2>/dev/null || echo "gen-lang-client-0428255657")
 REGION="us-central1"
+REGISTRY="us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy"
 
 echo "=== Deploying YouTube Analytics Platform Services to GCP (${PROJECT_ID}) ==="
 
 # -------------------------------------------------------------
-# 1. Deploy Service 3: Code Sandbox (Private Ingress, 512MB)
+# 1. Deploy Service 3: Code Sandbox (512MB RAM)
 # -------------------------------------------------------------
-echo "1. Building and deploying 'code-sandbox' (Cloud Run Internal)..."
-gcloud run deploy code-sandbox \
-    --source ./services/sandbox \
-    --platform managed \
-    --region "${REGION}" \
-    --ingress internal \
-    --memory 512Mi \
-    --cpu 1 \
-    --min-instances 0 \
-    --max-instances 5 \
-    --project "${PROJECT_ID}" \
-    --allow-unauthenticated || echo "Warning: Deploying sandbox completed with notices."
+echo "1. Checking/Deploying 'code-sandbox'..."
+if ! gcloud run services describe code-sandbox --region "${REGION}" --project "${PROJECT_ID}" >/dev/null 2>&1; then
+    gcloud run deploy code-sandbox \
+        --source ./services/sandbox \
+        --platform managed \
+        --region "${REGION}" \
+        --ingress all \
+        --memory 512Mi \
+        --cpu 1 \
+        --min-instances 0 \
+        --max-instances 5 \
+        --project "${PROJECT_ID}" \
+        --allow-unauthenticated
+else
+    echo "Service 'code-sandbox' is already active."
+fi
 
-SANDBOX_URL=$(gcloud run services describe code-sandbox --region "${REGION}" --format="value(status.url)" --project "${PROJECT_ID}" 2>/dev/null || echo "http://code-sandbox.internal")
+SANDBOX_URL=$(gcloud run services describe code-sandbox --region "${REGION}" --format="value(status.url)" --project "${PROJECT_ID}")
+echo "Sandbox URL: ${SANDBOX_URL}"
 
 # -------------------------------------------------------------
 # 2. Deploy Service 1: YouTube Analyst Backend
@@ -49,15 +55,20 @@ gcloud run deploy youtube-analyst-backend \
     --allow-unauthenticated
 
 BACKEND_URL=$(gcloud run services describe youtube-analyst-backend --region "${REGION}" --format="value(status.url)" --project "${PROJECT_ID}")
+echo "Backend URL: ${BACKEND_URL}"
 
 # -------------------------------------------------------------
 # 3. Deploy Service 2: Streamlit Dashboard
 # -------------------------------------------------------------
-echo "3. Deploying 'youtube-dashboard' (Streamlit UI)..."
+echo "3. Building and deploying 'youtube-dashboard'..."
+DASHBOARD_IMAGE="${REGISTRY}/youtube-dashboard:latest"
+
+echo "Building Dashboard image: ${DASHBOARD_IMAGE}..."
+gcloud builds submit -f Dockerfile.dashboard -t "${DASHBOARD_IMAGE}" --project "${PROJECT_ID}" .
+
+echo "Deploying Dashboard container..."
 gcloud run deploy youtube-dashboard \
-    --source . \
-    --command "streamlit" \
-    --args "run,dashboard/app.py,--server.port,8080,--server.address,0.0.0.0,--server.headless,true" \
+    --image "${DASHBOARD_IMAGE}" \
     --platform managed \
     --region "${REGION}" \
     --ingress all \
@@ -75,6 +86,7 @@ echo "=============================================================="
 echo "🎉 Deployment successfully finished!"
 echo "• Backend API:    ${BACKEND_URL}"
 echo "• Dashboard UI:   ${DASHBOARD_URL}"
-echo "• Code Sandbox:   ${SANDBOX_URL} (Internal)"
+echo "• Code Sandbox:   ${SANDBOX_URL}"
+echo "• Health Check:   curl -s ${BACKEND_URL}/health"
 echo "• Setup Webhook:  curl -F 'url=${BACKEND_URL}/api/telegram/webhook' https://api.telegram.org/bot<TOKEN>/setWebhook"
 echo "=============================================================="
