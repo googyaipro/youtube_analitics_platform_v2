@@ -1,49 +1,84 @@
-# 🎬 YouTube Analytics Platform
+# 🎬 YouTube Analytics Platform (GCP Production v2.1)
 
-A scalable, full-stack YouTube Analytics and Data Ingestion platform built with **Python 3.12**, **FastAPI**, **Google Cloud Platform (BigQuery & Cloud Storage)**, and **Streamlit**.
+A scalable, serverless YouTube Analytics and Competitor Monitoring Platform built on **Google Cloud Platform (GCP)** with **FastAPI**, **Gemini 3.5 Flash**, **BigQuery**, **Firestore**, **Cloud Tasks**, **Streamlit**, and an isolated **Code Sandbox**.
 
 ---
 
-## 🏛️ Architecture Overview
+## 🏛️ Production Architecture
 
 ```mermaid
-flowchart LR
-    subgraph Extraction
-        YT[YouTube Data API v3]
+flowchart TD
+    subgraph Clients ["Пользовательские интерфейсы"]
+        TG["📱 Telegram Бот\n(Мобильный доступ / Алерты)"]
+        Web["💻 Streamlit Дашборд\n(Аналитика / Time-Series)"]
     end
 
-    subgraph Backend_Ingestion["Backend & Pipeline (FastAPI)"]
-        API[FastAPI Service]
-        ETL[ETL Sync Controller]
+    subgraph Trigger ["Оркестрация и Очереди"]
+        Cron["⏰ Cloud Scheduler\n(Ежедневный Cron 08:00 UTC)"]
+        CT["📬 Cloud Tasks\n(Очередь сообщений TG + Dedicated CPU)"]
     end
 
-    subgraph GCP["Google Cloud Platform"]
-        GCS[("Cloud Storage (Raw JSON Lake)")]
-        BQ[("BigQuery (Analytical Warehouse)")]
+    subgraph CloudRun ["Google Cloud Run (Serverless)"]
+        subgraph SvcBackend ["Сервис 1: youtube-analyst-backend"]
+            FastAPI["FastAPI App"]
+            Hook["/api/telegram/webhook (15ms ACK)"]
+            TaskWorker["/api/tasks/process-telegram-message (Dedicated CPU)"]
+            CronRoute["/api/cron/track-competitors"]
+            APIRoute["/api/analyze & /api/competitors"]
+            Orchestrator["Root Agent Orchestrator"]
+            
+            FastAPI --> Hook & TaskWorker & CronRoute & APIRoute
+            Hook -->|15ms Enqueue| CT
+            CT -->|HTTP POST| TaskWorker
+            TaskWorker & APIRoute --> Orchestrator
+        end
+
+        subgraph SvcDashboard ["Сервис 2: youtube-dashboard"]
+            StreamlitApp["Streamlit UI App\n(Client-Side Plotly Interactive)"]
+        end
+
+        subgraph SvcSandbox ["Сервис 3: code-sandbox (512MB RAM, Internal)"]
+            Runner["Python Execution Sandbox\n(Matplotlib PNG для TG / Plotly JSON для Web)"]
+        end
     end
 
-    subgraph Frontend["Analytics Dashboard"]
-        ST[Streamlit Dashboard UI]
+    subgraph GoogleCloud ["Инфраструктура Google Cloud"]
+        FS[("Firestore (Native Mode)\n(Горячий кэш с TTL 24h, 40ms)")]
+        BQ[("Google BigQuery\n(DWH: Каналы, Снепшоты, Views)")]
+        Vertex["Vertex AI\n(Gemini 3.5 Flash Structured Output)"]
+        YT["YouTube Data API v3\n(Uploads Playlist UU...: 1 unit)"]
     end
 
-    YT -->|Fetch Videos & Channels| API
-    API --> ETL
-    ETL -->|Archive raw payload| GCS
-    ETL -->|Stream metrics & stats| BQ
-    BQ -->|Query KPIs & analytics| API
-    API -->|REST API| ST
+    TG <-->|HTTPS Webhook| Hook
+    TaskWorker -->|sendPhoto / sendMessage| TG
+    Web <-->|REST API / JSON| APIRoute
+    Cron -->|OIDC Auth POST| CronRoute
+    
+    Orchestrator <-->|Prompting & Structured Output| Vertex
+    Orchestrator <-->|Key-Value Hot Cache| FS
+    Orchestrator <-->|DWH Time-Series SQL| BQ
+    Orchestrator <-->|1 unit quota calls| YT
+    Orchestrator <-->|Safe Render HTTP| SvcSandbox
+    
+    StreamlitApp <-->|Direct SQL View| BQ
 ```
-
-### Key Components
-1. **Extraction**: Connects to the YouTube Data API v3 (with automatic fallback to mock generators if no API key is provided).
-2. **Data Lake Storage (GCS)**: Stores raw JSON extracts partitioned by date (`channels/YYYY/MM/DD/{channel_id}_raw.json`).
-3. **Data Warehouse (BigQuery)**: Stores clean, query-optimized analytical tables (`channels` and `video_metrics`).
-4. **FastAPI Backend**: Provides high-performance RESTful APIs for querying analytics, metrics, KPIs, and triggering ingestion jobs.
-5. **Streamlit Frontend**: Interactive UI for channel overview, video performance analysis, engagement scatter plots, and manual ingestion triggers.
 
 ---
 
-## 📁 Repository Structure
+## 💎 Ключевые продакшн-стандарты
+
+1. **Защита от CPU Throttling в Cloud Run**: Telegram-вебхук за 15 мс кладет задачу в **Google Cloud Tasks**, обеспечивая воркеру 100% выделенный CPU, автоматические ретраи и сохраняя Scale-to-Zero.
+2. **Экономия квоты YouTube API на 99%**: Загрузки видео запрашиваются через плейлист `UU...` (`playlistItems().list`), тратя **1 unit** вместо 100 units.
+3. **Безопасная песочница кодогенерации (`code-sandbox`)**:
+   - **Для Telegram**: Генерация легкого **Matplotlib PNG** (40 мс, <50MB RAM, без Chromium).
+   - **Для Streamlit**: Генерация **Plotly JSON** с нативным интерактивным рендерингом в браузере клиента.
+4. **Двухуровневое хранилище**:
+   - **Firestore (Native Mode, TTL 24h)**: горячий кэш с откликом 30–50 мс и автоочисткой.
+   - **BigQuery DWH**: долгосрочные снепшоты, дедупликация через `MERGE` и View `v_latest_channel_stats`.
+
+---
+
+## 📁 Структура репозитория
 
 ```
 youtube-analitics-platform/
@@ -51,120 +86,100 @@ youtube-analitics-platform/
 │   ├── api/
 │   │   └── v1/
 │   │       ├── endpoints/
-│   │       │   ├── channels.py        # Channel endpoints
-│   │       │   ├── videos.py          # Video metrics & KPI endpoints
-│   │       │   └── ingestion.py       # Pipeline trigger endpoint
-│   │       └── router.py              # API v1 router
-│   ├── models/
-│   │   ├── channel.py                 # Pydantic schemas for channels
-│   │   └── video.py                   # Pydantic schemas for videos
+│   │       │   ├── analyze.py         # AI-аналитик для дашборда
+│   │       │   ├── channels.py        # Эндпоинты каналов
+│   │       │   ├── competitors.py     # Регистрация конкурентов в BQ
+│   │       │   ├── cron.py            # 08:00 UTC ежедневный сбор метрик
+│   │       │   ├── ingestion.py       # Синхронизация данных
+│   │       │   ├── tasks.py           # Воркер задач Cloud Tasks
+│   │       │   ├── telegram.py        # Вебхук Telegram с ACK за 15 мс
+│   │       │   └── videos.py          # Видео-метрики и KPI
+│   │       └── router.py
 │   ├── services/
-│   │   ├── bigquery_service.py        # BigQuery integration & analytical queries
-│   │   ├── storage_service.py         # Google Cloud Storage raw backup service
-│   │   └── youtube_client.py          # YouTube Data API v3 client & fallback
-│   └── main.py                        # FastAPI application entrypoint
+│   │   ├── agent_orchestrator.py      # Оркестратор агента
+│   │   ├── bigquery_service.py        # DWH клиент и аналитика
+│   │   ├── cloud_tasks_service.py     # Очереди Google Cloud Tasks
+│   │   ├── firestore_cache.py         # Горячий кэш с TTL
+│   │   ├── gemini_service.py          # Gemini 3.5 Flash Structured Output
+│   │   ├── sandbox_client.py          # HTTP-клиент к песочнице
+│   │   ├── telegram_bot.py            # Отправка фото и текста в TG
+│   │   └── youtube_client.py          # YouTube API (UU... плейлисты)
+│   └── main.py                        # Точка входа FastAPI
 ├── dashboard/
-│   ├── app.py                         # Streamlit main dashboard & KPIs
+│   ├── app.py                         # Главный экран Streamlit
 │   ├── pages/
-│   │   ├── 1_📊_Channel_Overview.py    # Channel metrics & comparison
-│   │   ├── 2_🎬_Video_Performance.py   # Engagement & correlation charts
-│   │   └── 3_🔄_Data_Ingestion.py     # Interactive data sync interface
+│   │   ├── 1_📈_Time_Series.py        # Анализ трендов и динамики каналов
+│   │   ├── 2_💬_AI_Analyst.py         # Интерактивный чат с Plotly
+│   │   └── 3_⚙️_Competitors_Mgmt.py   # Реестр каналов-конкурентов
 │   └── utils/
-│       └── api_client.py              # Dashboard HTTP client for backend
-├── config/
-│   ├── __init__.py
-│   └── settings.py                    # Environment & Pydantic settings
+│       └── api_client.py              # HTTP-клиент к бэкенду
+├── services/
+│   └── sandbox/                       # Сервис 3: Изолированная песочница
+│       ├── app.py                     # POST /execute, GET /warmup
+│       ├── runner.py                  # Изолированный запуск с таймаутом
+│       ├── Dockerfile                 # Non-root user (512MB RAM)
+│       └── requirements.txt
+├── sql/
+│   └── ddl.sql                        # BigQuery DDL схемы и Views
 ├── scripts/
-│   ├── run_dev.sh                     # Concurrent dev server runner
-│   └── setup_bigquery.py              # BigQuery table initialization script
+│   ├── deploy_all.sh                  # Деплой трех сервисов в Cloud Run
+│   ├── run_dev.sh                     # Локальный запуск (бэкенд + дашборд)
+│   ├── setup_dwh.py                   # Накатка DDL в BigQuery
+│   └── setup_infra.sh                 # Включение API, Cloud Tasks, Firestore TTL
 ├── tests/
-│   └── test_backend.py                # Backend unit and integration tests
-├── .env.example                       # Sample environment variables
-├── .gitignore
-├── Dockerfile                         # Cloud Run container definition
-├── pyproject.toml
-└── requirements.txt
+│   └── test_backend.py                # Комплексные E2E тесты
+├── youtube_analitics_implementation_plan_v2.md
+├── Dockerfile
+├── requirements.txt
+└── pyproject.toml
 ```
 
 ---
 
-## 🚀 Quickstart Guide
+## 🚀 Быстрый запуск
 
-### 1. Environment Setup
-
-Create and activate your virtual environment:
+### 1. Локальная разработка
 
 ```bash
-python3 -m venv .venv
+# Активация виртуального окружения
 source .venv/bin/activate
 pip install -r requirements.txt
-```
+pip install -r services/sandbox/requirements.txt
 
-### 2. Configuration
-
-Copy `.env.example` to `.env`:
-
-```bash
+# Настройка переменных окружения
 cp .env.example .env
-```
 
-Update your configuration parameters in `.env`:
-- `YOUTUBE_API_KEY`: Your Google Cloud YouTube Data API v3 key (optional: if omitted, sample mock data is generated for testing).
-- `GCP_PROJECT_ID`: Your Google Cloud Project ID (e.g. `agentverse-guardian-gcloud`).
-- `BIGQUERY_DATASET_ID`: Target BigQuery dataset (default: `youtube_analytics`).
-- `GCS_BUCKET_NAME`: Cloud Storage bucket for raw data archives.
-
-### 3. Initialize Google Cloud Resources
-
-Authenticate with GCP and provision the BigQuery tables:
-
-```bash
-gcloud auth application-default login
-python scripts/setup_bigquery.py
-```
-
-### 4. Run the Application
-
-You can launch both the **FastAPI Backend** and the **Streamlit Dashboard** simultaneously:
-
-```bash
+# Запуск бэкенда и Streamlit дашборда
 ./scripts/run_dev.sh
 ```
 
-Or run them in separate terminals:
+- **Дашборд**: [http://localhost:8501](http://localhost:8501)
+- **API Swagger**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Песочница (при локальном запуске)**: [http://localhost:8080/docs](http://localhost:8080/docs)
+
+### 2. Настройка инфраструктуры Google Cloud
 
 ```bash
-# Terminal 1: FastAPI Backend
-uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-
-# Terminal 2: Streamlit Dashboard
-streamlit run dashboard/app.py --server.port 8501
+gcloud auth application-default login
+./scripts/setup_infra.sh
 ```
 
-- **Dashboard UI**: [http://localhost:8501](http://localhost:8501)
-- **API Documentation (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **API Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
+Скрипт автоматически:
+1. Включает необходимые GCP API (Cloud Run, Cloud Tasks, Firestore, BigQuery, Vertex AI, Scheduler).
+2. Создает очередь Cloud Tasks `telegram-tasks`.
+3. Включает нативную TTL-политику для коллекции `api_cache` в Firestore.
+4. Создает таблицы и View в BigQuery на основе `sql/ddl.sql`.
+
+### 3. Деплой всех сервисов в Cloud Run
+
+```bash
+./scripts/deploy_all.sh
+```
 
 ---
 
-## 🧪 Running Tests
-
-Run the test suite with `pytest`:
+## 🧪 Запуск тестов
 
 ```bash
 pytest tests/
-```
-
----
-
-## ☁️ Deployment (Google Cloud Run)
-
-Build and deploy directly to Google Cloud Run:
-
-```bash
-gcloud run deploy youtube-analytics-backend \
-    --source . \
-    --platform managed \
-    --region us-central1 \
-    --allow-unauthenticated
 ```

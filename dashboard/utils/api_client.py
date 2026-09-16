@@ -2,7 +2,7 @@ import os
 from typing import Any, Dict, List, Optional
 import requests
 
-API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000/api/v1")
+API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000/api")
 
 
 class APIClient:
@@ -35,6 +35,23 @@ class APIClient:
             return resp.json()
         except Exception:
             return []
+
+    def ask_ai_analyst(self, query: str) -> Dict[str, Any]:
+        try:
+            resp = requests.post(f"{self.base_url}/analyze", json={"query": query}, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            return {"error": str(e)}
+
+    def add_competitor(self, handle_or_url: str) -> Dict[str, Any]:
+        try:
+            payload = {"channel_url_or_handle": handle_or_url}
+            resp = requests.post(f"{self.base_url}/competitors", json=payload, timeout=20)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            return {"status": "ERROR", "message": str(e)}
 
     def trigger_sync(self, channel_identifier: str, max_videos: int = 20) -> Dict[str, Any]:
         try:

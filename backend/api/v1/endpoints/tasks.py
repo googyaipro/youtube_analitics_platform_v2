@@ -1,0 +1,78 @@
+import logging
+from typing import Any, Dict
+from fastapi import APIRouter, HTTPException, Request
+
+from backend.services.agent_orchestrator import AgentOrchestrator
+from backend.services.telegram_bot import TelegramBotService
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/tasks", tags=["Cloud Tasks Workers"])
+
+agent = AgentOrchestrator()
+bot = TelegramBotService()
+
+
+def handle_telegram_update_internal(update: Dict[str, Any]):
+    """Internal processing logic for Telegram update."""
+    message = update.get("message") or update.get("edited_message")
+    if not message:
+        return
+
+    chat_id = message.get("chat", {}).get("id")
+    text = message.get("text", "")
+    if not chat_id or not text:
+        return
+
+    # Handle /start command
+    if text.strip() == "/start":
+        welcome_msg = (
+            "👋 **Добро пожаловать в YouTube Analytics Platform!**\n\n"
+            "Я помогу проанализировать каналы конкурентов, сравнить просмотры и динамику.\n\n"
+            "Примеры запросов:\n"
+            "• *Сравни просмотры последних видео @MKBHD*\n"
+            "• *Покажи аналитику канала @GoogleCloud*\n"
+            "• *Какая вовлеченность у последних роликов MrBeast?*"
+        )
+        bot.send_message(chat_id, welcome_msg)
+        return
+
+    # Send typing status
+    bot.send_chat_action(chat_id, "upload_photo")
+    bot.send_message(chat_id, f"⏳ *Анализирую данные по запросу:* _{text}_ ...")
+
+    try:
+        # Run agent orchestrator (returns Matplotlib PNG + text summary)
+        result = agent.process_query(user_text=text, output_format="matplotlib")
+
+        # 1. Send Matplotlib chart if generated
+        png_base64 = result.get("png_base64")
+        if png_base64:
+            caption = f"📊 График показателей: **{result.get('channel_title')}**"
+            bot.send_photo(chat_id=chat_id, png_base64=png_base64, caption=caption)
+
+        # 2. Send text summary & key findings
+        findings_bullets = "\n".join([f"• {f}" for f in result.get("key_findings", [])])
+        summary_message = (
+            f"{result.get('summary_text')}\n\n"
+            f"**Ключевые инсайты:**\n{findings_bullets}"
+        )
+        bot.send_message(chat_id=chat_id, text=summary_message)
+
+    except Exception as e:
+        logger.error(f"Error processing Telegram task: {e}", exc_info=True)
+        bot.send_message(
+            chat_id=chat_id,
+            text=f"⚠️ Произошла ошибка при анализе: {str(e)}"
+        )
+
+
+@router.post("/process-telegram-message")
+async def process_telegram_message(request: Request):
+    """
+    Dedicated worker endpoint triggered by Google Cloud Tasks.
+    Executes with full dedicated CPU and automatic retries.
+    """
+    update_data = await request.json()
+    logger.info("Executing Cloud Task: process-telegram-message")
+    handle_telegram_update_internal(update_data)
+    return {"status": "SUCCESS"}
