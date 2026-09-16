@@ -50,7 +50,7 @@ gcloud run deploy youtube-analyst-backend \
     --cpu 1 \
     --min-instances 0 \
     --max-instances 10 \
-    --set-env-vars "SANDBOX_SERVICE_URL=${SANDBOX_URL},GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${REGION}" \
+    --set-env-vars "SANDBOX_SERVICE_URL=${SANDBOX_URL},GCP_PROJECT_ID=${PROJECT_ID},GCP_REGION=${REGION},GEMINI_MODEL=gemini-3.5-flash" \
     --project "${PROJECT_ID}" \
     --allow-unauthenticated
 
