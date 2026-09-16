@@ -183,6 +183,10 @@ class YouTubeClient:
             logger.error(f"Error fetching uploads: {e}")
             return self._generate_mock_videos(channel_id, count=max_results)
 
+    def get_channel_videos(self, channel_id: str, max_results: int = 20) -> List[Video]:
+        """Alias for get_channel_uploads for backwards compatibility."""
+        return self.get_channel_uploads(channel_id, max_results=max_results)
+
     def get_multiple_channels(self, channel_ids: List[str]) -> List[Channel]:
         """Batch fetch up to 50 channels in a single API call (Cost: 1 unit)."""
         if not channel_ids or not self.is_configured:

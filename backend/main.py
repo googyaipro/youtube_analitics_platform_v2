@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
         demo_channel = yt.get_channel("@GoogleCloud")
         if demo_channel:
             bq.insert_channel(demo_channel)
-            demo_videos = yt.get_channel_videos(demo_channel.channel_id, max_results=10)
+            demo_videos = yt.get_channel_uploads(demo_channel.channel_id, max_results=10)
             bq.insert_videos(demo_videos)
             logger.info("Initial data successfully seeded.")
 
