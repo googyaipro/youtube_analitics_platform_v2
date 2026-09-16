@@ -158,16 +158,28 @@ class BigQueryService:
             query = f"""
                 SELECT channel_id, title, custom_url, subscriber_count, view_count, video_count, country, published_at, updated_at
                 FROM `{self.project_id}.{self.dataset_id}.channels`
+                WHERE channel_id NOT IN (SELECT channel_id FROM `{self.project_id}.{self.dataset_id}.excluded_channels`)
                 ORDER BY updated_at DESC
             """
             job = self._client.query(query)
-            return [dict(row) for row in job.result()]
+            seen = set()
+            unique_channels = []
+            for row in job.result():
+                d = dict(row)
+                cid = d.get("channel_id")
+                if cid and cid not in seen:
+                    seen.add(cid)
+                    unique_channels.append(d)
+            return unique_channels
         except Exception as e:
             logger.warning(f"Error querying BigQuery channels ({e}), falling back to cache.")
             return list(self._mock_channels.values())
 
     def delete_channel(self, channel_id: str) -> bool:
-        """Delete channel from competitor registry."""
+        """
+        Delete channel using Tombstone pattern (bypasses BigQuery streaming buffer 400 error).
+        Immediately excludes channel from all queries and views via `excluded_channels`.
+        """
         if channel_id in self._mock_channels:
             del self._mock_channels[channel_id]
 
@@ -175,16 +187,28 @@ class BigQueryService:
             return True
 
         try:
-            for table_name in ["competitor_channels", "channels"]:
-                query = f"""
-                    DELETE FROM `{self.project_id}.{self.dataset_id}.{table_name}`
-                    WHERE channel_id = '{channel_id}'
-                """
-                self._client.query(query).result()
-            logger.info(f"Deleted channel {channel_id} from BigQuery.")
+            # 1. Insert into excluded_channels (Tombstone - never blocked by streaming buffer)
+            tombstone = {
+                "channel_id": channel_id,
+                "deleted_at": datetime.utcnow().isoformat()
+            }
+            table_ref = f"{self.project_id}.{self.dataset_id}.excluded_channels"
+            errors = self._client.insert_rows_json(table_ref, [tombstone])
+            if errors:
+                logger.warning(f"Error inserting tombstone: {errors}")
+
+            # 2. Best-effort hard delete (succeeds if rows are flushed from buffer)
+            try:
+                for table_name in ["competitor_channels", "channels"]:
+                    query = f"DELETE FROM `{self.project_id}.{self.dataset_id}.{table_name}` WHERE channel_id = '{channel_id}'"
+                    self._client.query(query).result()
+            except Exception as dml_err:
+                logger.info(f"DML delete deferred until streaming buffer flush: {dml_err}")
+
+            logger.info(f"Successfully excluded/deleted channel {channel_id}.")
             return True
         except Exception as e:
-            logger.error(f"Error deleting channel {channel_id}: {e}")
+            logger.error(f"Error in delete_channel for {channel_id}: {e}")
             return False
 
     def get_videos(self, channel_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:

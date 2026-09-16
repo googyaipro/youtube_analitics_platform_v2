@@ -19,7 +19,13 @@ CREATE TABLE IF NOT EXISTS `youtube_analytics.competitor_channels` (
     notes STRING
 );
 
--- 3. Ежедневные снепшоты каналов (Партиционирование по дате)
+-- 3. Исключенные (удаленные) каналы (Tombstone pattern для обхода блокировки streaming buffer)
+CREATE TABLE IF NOT EXISTS `youtube_analytics.excluded_channels` (
+    channel_id STRING NOT NULL,
+    deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- 4. Ежедневные снепшоты каналов (Партиционирование по дате)
 CREATE TABLE IF NOT EXISTS `youtube_analytics.channel_snapshots` (
     channel_id STRING NOT NULL,
     channel_title STRING,
@@ -34,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `youtube_analytics.channel_snapshots` (
 PARTITION BY snapshot_date
 CLUSTER BY channel_id;
 
--- 4. Снепшоты видеороликов (Партиционирование по дате замера)
+-- 5. Снепшоты видеороликов (Партиционирование по дате замера)
 CREATE TABLE IF NOT EXISTS `youtube_analytics.video_snapshots` (
     video_id STRING NOT NULL,
     channel_id STRING NOT NULL,
@@ -51,20 +57,22 @@ CREATE TABLE IF NOT EXISTS `youtube_analytics.video_snapshots` (
 PARTITION BY DATE(snapshot_timestamp)
 CLUSTER BY channel_id, video_id;
 
--- 5. Представление (View) для мгновенного получения актуального среза по каналам
+-- 6. Представление (View) для мгновенного получения актуального среза по каналам
 CREATE OR REPLACE VIEW `youtube_analytics.v_latest_channel_stats` AS
 SELECT * EXCEPT(rn)
 FROM (
     SELECT *, ROW_NUMBER() OVER (PARTITION BY channel_id ORDER BY snapshot_date DESC) as rn
     FROM `youtube_analytics.channel_snapshots`
+    WHERE channel_id NOT IN (SELECT channel_id FROM `youtube_analytics.excluded_channels`)
 )
 WHERE rn = 1;
 
--- 6. Представление (View) для топ-видео с наивысшей вовлеченностью (ER)
+-- 7. Представление (View) для топ-видео с наивысшей вовлеченностью (ER)
 CREATE OR REPLACE VIEW `youtube_analytics.v_top_engaging_videos` AS
 SELECT * EXCEPT(rn)
 FROM (
     SELECT *, ROW_NUMBER() OVER (PARTITION BY video_id ORDER BY snapshot_timestamp DESC) as rn
     FROM `youtube_analytics.video_snapshots`
+    WHERE channel_id NOT IN (SELECT channel_id FROM `youtube_analytics.excluded_channels`)
 )
 WHERE rn = 1;

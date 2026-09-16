@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 from google.cloud import firestore
 
@@ -41,19 +41,27 @@ class FirestoreCache:
                 if doc.exists:
                     data = doc.to_dict()
                     expires_at = data.get("expires_at")
-                    if expires_at and expires_at > datetime.utcnow():
-                        logger.info(f"Firestore cache HIT: {cache_key}")
-                        return data.get("payload")
-                    else:
-                        logger.info(f"Firestore cache EXPIRED: {cache_key}")
-                        return None
+                    now_utc = datetime.now(timezone.utc)
+                    if expires_at:
+                        if getattr(expires_at, "tzinfo", None) is None:
+                            expires_at = expires_at.replace(tzinfo=timezone.utc)
+                        if expires_at > now_utc:
+                            logger.info(f"Firestore cache HIT: {cache_key}")
+                            return data.get("payload")
+                        else:
+                            logger.info(f"Firestore cache EXPIRED: {cache_key}")
+                            return None
             except Exception as e:
                 logger.warning(f"Error reading from Firestore cache: {e}")
 
         # 2. In-memory fallback
         item = self._memory_cache.get(cache_key)
         if item:
-            if item["expires_at"] > datetime.utcnow():
+            now_utc = datetime.now(timezone.utc)
+            item_exp = item["expires_at"]
+            if getattr(item_exp, "tzinfo", None) is None:
+                item_exp = item_exp.replace(tzinfo=timezone.utc)
+            if item_exp > now_utc:
                 logger.info(f"In-memory cache HIT: {cache_key}")
                 return item["payload"]
             else:
@@ -63,11 +71,12 @@ class FirestoreCache:
 
     def set(self, cache_key: str, payload: Dict[str, Any], ttl_hours: int = 24) -> bool:
         """Store payload with expires_at for automatic TTL purge."""
-        expires_at = datetime.utcnow() + timedelta(hours=ttl_hours)
+        now_utc = datetime.now(timezone.utc)
+        expires_at = now_utc + timedelta(hours=ttl_hours)
         doc_data = {
             "cache_key": cache_key,
             "payload": payload,
-            "created_at": datetime.utcnow(),
+            "created_at": now_utc,
             "expires_at": expires_at,
         }
 
