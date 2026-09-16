@@ -4,7 +4,7 @@ from utils.api_client import APIClient
 
 st.set_page_config(page_title="Управление конкурентами", page_icon="⚙️", layout="wide")
 st.title("⚙️ Управление списком отслеживаемых каналов")
-st.caption("Добавляйте каналы конкурентов для автоматического ежедневного мониторинга и сбора метрик.")
+st.caption("Добавляйте и удаляйте каналы конкурентов для автоматического ежедневного мониторинга и сбора метрик.")
 
 client = APIClient()
 
@@ -32,6 +32,7 @@ if submitted:
             if result.get("status") == "REGISTERED":
                 st.success(f"Канал **{result.get('title')}** успешно добавлен в реестр BigQuery!")
                 st.info(f"Подписчиков: {result.get('subscriber_count', 0):,} | Просмотров: {result.get('view_count', 0):,}")
+                st.rerun()
             else:
                 st.error(f"Не удалось добавить канал: {result.get('message', 'Ошибка валидации')}")
 
@@ -45,5 +46,24 @@ if channels:
     cols = ["title", "custom_url", "subscriber_count", "view_count", "video_count", "country"]
     avail = [c for c in cols if c in df.columns]
     st.dataframe(df[avail], use_container_width=True)
+
+    # Section to delete a channel
+    st.markdown("---")
+    st.subheader("🗑️ Удалить канал из мониторинга")
+    channel_options = {
+        f"{c.get('title')} ({c.get('custom_url') or c.get('channel_id')})": c.get("channel_id")
+        for c in channels
+    }
+    selected_name = st.selectbox("Выберите канал для удаления:", list(channel_options.keys()))
+    selected_id = channel_options[selected_name]
+
+    if st.button("❌ Удалить выбранный канал", type="secondary"):
+        with st.spinner(f"Удаление канала {selected_name}..."):
+            del_result = client.delete_competitor(selected_id)
+            if del_result.get("status") == "DELETED":
+                st.success(f"Канал **{selected_name}** успешно удален из BigQuery!")
+                st.rerun()
+            else:
+                st.error(f"Ошибка удаления: {del_result.get('message')}")
 else:
     st.info("Реестр каналов пуст. Зарегистрируйте свой первый канал выше.")

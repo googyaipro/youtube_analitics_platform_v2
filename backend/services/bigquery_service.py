@@ -166,6 +166,27 @@ class BigQueryService:
             logger.warning(f"Error querying BigQuery channels ({e}), falling back to cache.")
             return list(self._mock_channels.values())
 
+    def delete_channel(self, channel_id: str) -> bool:
+        """Delete channel from competitor registry."""
+        if channel_id in self._mock_channels:
+            del self._mock_channels[channel_id]
+
+        if not self.is_connected:
+            return True
+
+        try:
+            for table_name in ["competitor_channels", "channels"]:
+                query = f"""
+                    DELETE FROM `{self.project_id}.{self.dataset_id}.{table_name}`
+                    WHERE channel_id = '{channel_id}'
+                """
+                self._client.query(query).result()
+            logger.info(f"Deleted channel {channel_id} from BigQuery.")
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting channel {channel_id}: {e}")
+            return False
+
     def get_videos(self, channel_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
         if not self.is_connected:
             vids = list(self._mock_videos.values())

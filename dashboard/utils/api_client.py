@@ -53,6 +53,14 @@ class APIClient:
         except Exception as e:
             return {"status": "ERROR", "message": str(e)}
 
+    def delete_competitor(self, channel_id: str) -> Dict[str, Any]:
+        try:
+            resp = requests.delete(f"{self.base_url}/competitors/{channel_id}", timeout=15)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            return {"status": "ERROR", "message": str(e)}
+
     def trigger_sync(self, channel_identifier: str, max_videos: int = 20) -> Dict[str, Any]:
         try:
             payload = {

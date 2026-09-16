@@ -28,12 +28,68 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
         welcome_msg = (
             "👋 **Добро пожаловать в YouTube Analytics Platform!**\n\n"
             "Я помогу проанализировать каналы конкурентов, сравнить просмотры и динамику.\n\n"
-            "Примеры запросов:\n"
+            "**Команды управления каналами:**\n"
+            "• `/list` — показать список отслеживаемых каналов\n"
+            "• `/add @handle` — добавить канал в мониторинг\n"
+            "• `/delete @handle` — удалить канал из мониторинга\n\n"
+            "**Примеры аналитических запросов:**\n"
             "• *Сравни просмотры последних видео @MKBHD*\n"
             "• *Покажи аналитику канала @GoogleCloud*\n"
             "• *Какая вовлеченность у последних роликов MrBeast?*"
         )
         bot.send_message(chat_id, welcome_msg)
+        return
+
+    # Handle /list command
+    if text.strip() == "/list":
+        channels = agent.bq.get_channels()
+        if not channels:
+            bot.send_message(chat_id, "ℹ️ Список отслеживаемых каналов пуст. Добавьте канал командой: `/add @handle`")
+        else:
+            lines = ["📋 **Отслеживаемые каналы:**\n"]
+            for idx, c in enumerate(channels, 1):
+                lines.append(f"{idx}. **{c.get('title')}** ({c.get('custom_url') or c.get('channel_id')}) — {c.get('subscriber_count', 0):,} subs")
+            bot.send_message(chat_id, "\n".join(lines))
+        return
+
+    # Handle /add command
+    if text.startswith("/add "):
+        handle = text.replace("/add ", "").strip()
+        bot.send_chat_action(chat_id, "typing")
+        bot.send_message(chat_id, f"⏳ Добавляю канал *{handle}* в мониторинг...")
+        ch = agent.yt.get_channel(handle)
+        if ch:
+            agent.bq.insert_channel(ch)
+            vids = agent.yt.get_channel_uploads(ch.channel_id, max_results=10)
+            if vids:
+                agent.bq.insert_videos(vids)
+            bot.send_message(
+                chat_id,
+                f"✅ Канал **{ch.snippet.title}** успешно добавлен!\n\n"
+                f"• Подписчиков: **{ch.statistics.subscriber_count:,}**\n"
+                f"• Суммарно просмотров: **{ch.statistics.view_count:,}**\n"
+                f"• Загружено роликов: **{ch.statistics.video_count:,}**"
+            )
+        else:
+            bot.send_message(chat_id, f"❌ Канал '{handle}' не найден в YouTube.")
+        return
+
+    # Handle /delete command
+    if text.startswith("/delete ") or text.startswith("/remove "):
+        target = text.split(maxsplit=1)[1].strip()
+        channels = agent.bq.get_channels()
+        target_id = None
+        target_title = target
+        for c in channels:
+            if target.lower() in (c.get("title", "").lower(), c.get("custom_url", "").lower(), c.get("channel_id", "").lower()):
+                target_id = c.get("channel_id")
+                target_title = c.get("title")
+                break
+        if target_id:
+            agent.bq.delete_channel(target_id)
+            bot.send_message(chat_id, f"🗑️ Канал **{target_title}** успешно удален из мониторинга.")
+        else:
+            bot.send_message(chat_id, f"Канал '{target}' не найден в вашем списке отслеживаемых каналов.")
         return
 
     # Send typing status

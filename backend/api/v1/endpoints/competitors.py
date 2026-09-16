@@ -50,3 +50,13 @@ def add_competitor(payload: AddCompetitorRequest):
         "view_count": channel.statistics.view_count,
         "video_count": channel.statistics.video_count
     }
+
+
+@router.delete("/{channel_id}", response_model=Dict[str, Any])
+def delete_competitor(channel_id: str):
+    """Remove a channel from the competitor tracking registry."""
+    success = bq.delete_channel(channel_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete channel from registry.")
+    return {"status": "DELETED", "channel_id": channel_id}
+
