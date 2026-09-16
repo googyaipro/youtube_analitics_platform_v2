@@ -13,8 +13,14 @@ st.set_page_config(
 client = APIClient()
 
 # Header
-st.title("🎬 YouTube Analytics Platform")
-st.caption("Serverless платформа на базе Google Cloud (Cloud Run, Cloud Tasks, BigQuery, Firestore, Vertex AI)")
+col_head, col_btn = st.columns([4, 1])
+with col_head:
+    st.title("🎬 YouTube Analytics Platform")
+    st.caption("Serverless платформа на базе Google Cloud (Cloud Run, Cloud Tasks, BigQuery, Firestore, Vertex AI)")
+with col_btn:
+    st.write("")
+    if st.button("🔄 Обновить данные", use_container_width=True):
+        st.rerun()
 
 # Fetch KPIs
 kpis = client.get_kpis()

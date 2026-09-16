@@ -23,17 +23,6 @@ async def lifespan(app: FastAPI):
     bq = BigQueryService()
     bq.init_dataset_and_tables()
     
-    # Preload initial demo data if BigQuery / cache is empty
-    if not bq.get_channels():
-        logger.info("Populating initial demo channel data...")
-        yt = YouTubeClient()
-        demo_channel = yt.get_channel("@GoogleCloud")
-        if demo_channel:
-            bq.insert_channel(demo_channel)
-            demo_videos = yt.get_channel_uploads(demo_channel.channel_id, max_results=10)
-            bq.insert_videos(demo_videos)
-            logger.info("Initial data successfully seeded.")
-
     yield
     logger.info("Shutting down backend services.")
 

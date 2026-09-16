@@ -220,7 +220,13 @@ class BigQueryService:
             return vids[:limit]
 
         try:
-            where_clause = f"WHERE channel_id = '{channel_id}'" if channel_id else ""
+            conditions = [
+                f"channel_id NOT IN (SELECT channel_id FROM `{self.project_id}.{self.dataset_id}.excluded_channels`)"
+            ]
+            if channel_id:
+                conditions.append(f"channel_id = '{channel_id}'")
+            where_clause = "WHERE " + " AND ".join(conditions)
+
             query = f"""
                 SELECT video_id, channel_id, channel_title, title, description, published_at,
                        view_count, like_count, comment_count, duration, thumbnail_url, extracted_at
@@ -230,7 +236,15 @@ class BigQueryService:
                 LIMIT {limit}
             """
             job = self._client.query(query)
-            return [dict(row) for row in job.result()]
+            seen = set()
+            unique_videos = []
+            for row in job.result():
+                d = dict(row)
+                vid = d.get("video_id")
+                if vid and vid not in seen:
+                    seen.add(vid)
+                    unique_videos.append(d)
+            return unique_videos
         except Exception as e:
             logger.warning(f"Error querying BigQuery videos ({e}), falling back to cache.")
             vids = list(self._mock_videos.values())
