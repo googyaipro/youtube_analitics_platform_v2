@@ -16,11 +16,11 @@ class Settings(BaseSettings):
     TELEGRAM_WEBHOOK_SECRET: Optional[str] = "secret-tg-token-xyz"
     
     # Google Cloud Platform
-    GCP_PROJECT_ID: str = "agentverse-guardian-gcloud"
+    GCP_PROJECT_ID: str = "gen-lang-client-0428255657"
     GCP_LOCATION: str = "US"
     GCP_REGION: str = "us-central1"
     BIGQUERY_DATASET_ID: str = "youtube_analytics"
-    GCS_BUCKET_NAME: str = "youtube-analytics-raw-data-bucket"
+    GCS_BUCKET_NAME: str = "gen-lang-client-0428255657-yt-raw-data"
     CLOUD_TASKS_QUEUE: str = "telegram-tasks"
     
     # Microservices URLs

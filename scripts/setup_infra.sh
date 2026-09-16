@@ -6,7 +6,7 @@
 
 set -eo pipefail
 
-PROJECT_ID=$(gcloud config get-value project 2>/dev/null || echo "agentverse-guardian-gcloud")
+PROJECT_ID=$(gcloud config get-value project 2>/dev/null || echo "gen-lang-client-0428255657")
 REGION="us-central1"
 BIGQUERY_LOCATION="US"
 QUEUE_NAME="telegram-tasks"
