@@ -61,14 +61,11 @@ echo "Backend URL: ${BACKEND_URL}"
 # 3. Deploy Service 2: Streamlit Dashboard
 # -------------------------------------------------------------
 echo "3. Building and deploying 'youtube-dashboard'..."
-DASHBOARD_IMAGE="${REGISTRY}/youtube-dashboard:latest"
+cp Dockerfile Dockerfile.backend
+cp Dockerfile.dashboard Dockerfile
 
-echo "Building Dashboard image: ${DASHBOARD_IMAGE}..."
-gcloud builds submit -f Dockerfile.dashboard -t "${DASHBOARD_IMAGE}" --project "${PROJECT_ID}" .
-
-echo "Deploying Dashboard container..."
 gcloud run deploy youtube-dashboard \
-    --image "${DASHBOARD_IMAGE}" \
+    --source . \
     --platform managed \
     --region "${REGION}" \
     --ingress all \
@@ -79,6 +76,9 @@ gcloud run deploy youtube-dashboard \
     --set-env-vars "BACKEND_API_URL=${BACKEND_URL}/api" \
     --project "${PROJECT_ID}" \
     --allow-unauthenticated
+
+cp Dockerfile.backend Dockerfile
+rm -f Dockerfile.backend
 
 DASHBOARD_URL=$(gcloud run services describe youtube-dashboard --region "${REGION}" --format="value(status.url)" --project "${PROJECT_ID}")
 
