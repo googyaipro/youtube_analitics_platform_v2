@@ -228,10 +228,17 @@ class BigQueryService:
             where_clause = "WHERE " + " AND ".join(conditions)
 
             query = f"""
-                SELECT video_id, channel_id, channel_title, title, description, published_at,
-                       view_count, like_count, comment_count, duration, thumbnail_url, extracted_at
-                FROM `{self.project_id}.{self.dataset_id}.video_metrics`
-                {where_clause}
+                WITH enriched AS (
+                    SELECT video_id, channel_id, channel_title, title, description, published_at,
+                           view_count, like_count, comment_count, duration, thumbnail_url, extracted_at,
+                           ROUND(AVG(view_count) OVER(PARTITION BY channel_id), 0) AS channel_avg_views,
+                           ROUND(view_count / NULLIF(AVG(view_count) OVER(PARTITION BY channel_id), 0), 2) AS outlier_score,
+                           ROUND(view_count / GREATEST(1, TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), published_at, HOUR)), 1) AS velocity_vph,
+                           ROUND((like_count + comment_count) / NULLIF(view_count, 0) * 100, 2) AS engagement_rate_pct
+                    FROM `{self.project_id}.{self.dataset_id}.video_metrics`
+                    {where_clause}
+                )
+                SELECT * FROM enriched
                 ORDER BY view_count DESC
                 LIMIT {limit}
             """
@@ -243,6 +250,20 @@ class BigQueryService:
                 vid = d.get("video_id")
                 if vid and vid not in seen:
                     seen.add(vid)
+                    # Generate human-readable performance badges
+                    badges = []
+                    score = float(d.get("outlier_score") or 1.0)
+                    vph = float(d.get("velocity_vph") or 0.0)
+                    er = float(d.get("engagement_rate_pct") or 0.0)
+                    if score >= 2.0:
+                        badges.append(f"🚀 Хит {score}x")
+                    elif score >= 1.5:
+                        badges.append(f"📈 Выше нормы ({score}x)")
+                    if vph >= 100:
+                        badges.append(f"⚡ {int(vph)} просм/ч")
+                    if er >= 2.5:
+                        badges.append(f"💬 ER {er:.1f}%")
+                    d["badges"] = badges
                     unique_videos.append(d)
             return unique_videos
         except Exception as e:
@@ -251,6 +272,44 @@ class BigQueryService:
             if channel_id:
                 vids = [v for v in vids if v.get("channel_id") == channel_id]
             return vids[:limit]
+
+    def get_video_by_id_or_title(self, query: str) -> Optional[Dict[str, Any]]:
+        """Find video by video_id, URL, rank number, or title keywords."""
+        clean_q = query.strip()
+        videos = self.get_videos(limit=200)
+        if not videos:
+            return None
+
+        # 1. Check if user specified a rank number (e.g., '1', '#1', 'топ 1')
+        clean_digits = re.sub(r"[^\d]", "", clean_q)
+        if clean_digits and (clean_q.startswith("#") or clean_q.isdigit() or "топ" in clean_q.lower() or "top" in clean_q.lower()):
+            idx = int(clean_digits) - 1
+            if 0 <= idx < len(videos):
+                return videos[idx]
+
+        # 2. Check if YouTube URL or exact 11-char video ID
+        url_match = re.search(r"(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})", clean_q)
+        target_id = url_match.group(1) if url_match else clean_q
+
+        for v in videos:
+            if v.get("video_id") == target_id:
+                return v
+
+        # 3. Case-insensitive title match
+        lowered = clean_q.lower()
+        for v in videos:
+            if lowered in (v.get("title") or "").lower():
+                return v
+
+        # 4. Keyword words match (words > 3 chars)
+        keywords = [w for w in lowered.split() if len(w) > 3 and w not in ["почему", "выстрелил", "видео", "ролик", "разбор", "канал"]]
+        if keywords:
+            for v in videos:
+                t = (v.get("title") or "").lower()
+                if any(kw in t for kw in keywords):
+                    return v
+
+        return videos[0]
 
     def get_kpis(self) -> Dict[str, Any]:
         videos = self.get_videos(limit=500)

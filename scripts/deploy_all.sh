@@ -106,7 +106,7 @@ if [ -n "${TELEGRAM_BOT_TOKEN}" ]; then
     echo "Registering Telegram bot commands menu..."
     curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setMyCommands" \
         -H "Content-Type: application/json" \
-        -d '{"commands":[{"command":"help","description":"Справка и список команд"},{"command":"list","description":"Список отслеживаемых каналов"},{"command":"users","description":"Пользователи бота (админ)"},{"command":"add","description":"Добавить канал (@handle)"},{"command":"delete","description":"Удалить канал (@handle)"}]}' >/dev/null 2>&1 || true
+        -d '{"commands":[{"command":"help","description":"Справка и список команд"},{"command":"explain","description":"AI-разбор факторов успеха ролика"},{"command":"list","description":"Список отслеживаемых каналов"},{"command":"users","description":"Пользователи бота (админ)"},{"command":"add","description":"Добавить канал (@handle)"},{"command":"delete","description":"Удалить канал (@handle)"}]}' >/dev/null 2>&1 || true
     echo "Telegram bot commands registered."
 fi
 

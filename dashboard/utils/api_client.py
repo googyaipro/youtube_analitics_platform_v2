@@ -36,6 +36,14 @@ class APIClient:
         except Exception:
             return []
 
+    def explain_video(self, video_id: str) -> Dict[str, Any]:
+        try:
+            resp = requests.get(f"{self.base_url}/videos/{video_id}/explain", timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            return {"error": str(e)}
+
     def ask_ai_analyst(self, query: str) -> Dict[str, Any]:
         try:
             resp = requests.post(f"{self.base_url}/analyze", json={"query": query}, timeout=30)

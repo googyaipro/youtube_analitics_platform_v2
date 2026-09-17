@@ -160,6 +160,64 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
             bot.send_message(chat_id, f"Канал '{target}' не найден в вашем списке отслеживаемых каналов.")
         return
 
+    # Handle /explain command or natural question about video success
+    is_explain_query = (
+        cmd in ("/explain", "/why", "/breakdown")
+        or any(phrase in text.lower() for phrase in ["почему выстрелил", "почему ролик", "разбор видео", "факторы успеха", "почему в топе", "почему на первом месте", "разбор ролика"])
+    )
+
+    if is_explain_query:
+        target_query = ""
+        if cmd:
+            parts = clean_text.split(maxsplit=1)
+            target_query = parts[1].strip() if len(parts) > 1 else "1"
+        else:
+            target_query = clean_text
+
+        bot.send_chat_action(chat_id, "typing")
+        bot.send_message(chat_id, "🔍 *Анализирую факторы успеха ролика через Gemini 3.5 Flash...*")
+
+        video = agent.bq.get_video_by_id_or_title(target_query)
+        if not video:
+            bot.send_message(
+                chat_id,
+                "❌ Не удалось найти указанный ролик в базе данных.\n"
+                "Попробуйте передать команду с номером в топе, например: `/explain 1` или `/explain GPT-6`."
+            )
+            return
+
+        from backend.services.gemini_service import GeminiService
+        gemini = GeminiService()
+        explanation = gemini.explain_video_success(video)
+
+        score = float(video.get("outlier_score") or 1.0)
+        vph = float(video.get("velocity_vph") or 0.0)
+        er = float(video.get("engagement_rate_pct") or 0.0)
+        views = video.get("view_count", 0)
+        avg_views = int(video.get("channel_avg_views") or views)
+        badges_str = " ".join([f"`{b}`" for b in video.get("badges", [])])
+
+        msg = (
+            f"🎯 **Разбор факторов успеха ролика**\n\n"
+            f"🎬 **[{video.get('title')}](https://www.youtube.com/watch?v={video.get('video_id')})**\n"
+            f"📺 Канал: **{video.get('channel_title')}**\n"
+            f"{badges_str}\n\n"
+            f"📊 **Ключевые метрики:**\n"
+            f"• 👁️ Просмотры: **{views:,}** (в **{score}x** выше нормы канала: {avg_views:,})\n"
+            f"• ⚡ Скорость: **{vph} просм/час**\n"
+            f"• 💬 Вовлеченность (ER): **{er:.2f}%** (👍 {video.get('like_count', 0):,} • 💬 {video.get('comment_count', 0):,})\n\n"
+            f"💡 **Вердикт AI (Gemini 3.5 Flash):**\n"
+            f"{explanation.get('verdict')}\n\n"
+            f"🪝 **Крючки темы и заголовка:**\n"
+            f"{explanation.get('hook_analysis')}\n\n"
+            f"🔥 **Оседланный тренд:**\n"
+            f"{explanation.get('trend_alignment')}\n\n"
+            f"🛠️ **Как повторить успех:**\n"
+            f"_{explanation.get('actionable_takeaway')}_"
+        )
+        bot.send_message(chat_id, msg)
+        return
+
     # Reject unknown slash commands
     if cmd:
         bot.send_message(

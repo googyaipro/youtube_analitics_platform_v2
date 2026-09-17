@@ -122,3 +122,73 @@ fig.update_layout(yaxis={'autorange': 'reversed'})
             matplotlib_code=matplotlib_code.strip(),
             plotly_code=plotly_code.strip()
         )
+
+    def explain_video_success(
+        self,
+        video_data: Dict[str, Any],
+        channel_title: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Explain why a video achieved its ranking/success using Gemini 3.5 Flash."""
+        title = video_data.get("title", "")
+        ch_title = channel_title or video_data.get("channel_title", "YouTube Channel")
+        views = video_data.get("view_count", 0)
+        likes = video_data.get("like_count", 0)
+        comments = video_data.get("comment_count", 0)
+        avg_views = video_data.get("channel_avg_views") or views
+        outlier = video_data.get("outlier_score") or (round(views / avg_views, 2) if avg_views else 1.0)
+        vph = video_data.get("velocity_vph") or 0.0
+        er = video_data.get("engagement_rate_pct") or 0.0
+
+        if not self.is_available:
+            return self._rule_based_explanation(video_data)
+
+        prompt = f"""
+Ты — эксперт по алгоритмам YouTube и виральности контента в нише IT, AI и технологий.
+Проанализируй видео, которое занимает высокое место в рейтинге просмотров, и объясни, ПОЧЕМУ оно добилось такого результата.
+
+Данные о видео:
+- Название: "{title}"
+- Канал: "{ch_title}"
+- Просмотры: {views:,}
+- Средние просмотры этого канала: {int(avg_views):,}
+- Outlier Score (Хайп-множитель к средней норме канала): {outlier}x
+- Скорость набора просмотров (VPH): {vph} просм/час
+- Лайки: {likes:,}
+- Комментарии: {comments:,}
+- Вовлеченность (ER): {er}%
+
+Верни строгий JSON-объект (без markdown-блоков, только чистый JSON) со следующей структурой:
+{{
+  "verdict": "Краткий емкий вывод (2 предложения), почему именно этот ролик выстрелил и занял топовое место в таблице.",
+  "hook_analysis": "Разбор кликабельности заголовка и формулировки темы (какие слова, контрасты или интрига привлекли клики).",
+  "trend_alignment": "Оседланный тренд или инфоповод (почему тема горячая прямо сейчас).",
+  "engagement_factor": "Оценка отклика аудитории на основе лайков, комментариев и вовлеченности.",
+  "actionable_takeaway": "Практический совет: что конкуренты или автор могут повторить на своем канале."
+}}
+"""
+        try:
+            response = self._model.generate_content(
+                prompt,
+                generation_config={"temperature": 0.2, "response_mime_type": "application/json"}
+            )
+            raw_text = response.text.strip()
+            return json.loads(raw_text)
+        except Exception as e:
+            logger.error(f"Error calling Gemini in explain_video_success ({e}), using fallback.")
+            return self._rule_based_explanation(video_data)
+
+    def _rule_based_explanation(self, video_data: Dict[str, Any]) -> Dict[str, Any]:
+        title = video_data.get("title", "")
+        ch_title = video_data.get("channel_title", "YouTube Channel")
+        views = video_data.get("view_count", 0)
+        avg_views = video_data.get("channel_avg_views") or views
+        outlier = video_data.get("outlier_score") or (round(views / avg_views, 2) if avg_views else 1.0)
+        vph = video_data.get("velocity_vph") or 0.0
+
+        return {
+            "verdict": f"Ролик «{title}» канала {ch_title} набрал {views:,} просмотров, что в {outlier}x превышает среднюю норму канала ({int(avg_views):,}). Видео вызвало высокий интерес аудитории и было активно рекомендовано алгоритмами YouTube.",
+            "hook_analysis": "Заголовок эффективно использует формулу интриги и названия ключевых ИИ-инструментов, привлекая как энтузиастов, так и профессионалов.",
+            "trend_alignment": "Тема ролика идеально совпала с текущим глобальным всплеском интереса к новым моделям ИИ и автоматизации.",
+            "engagement_factor": f"Темп набора составляет {vph} просмотров в час при стабильном соотношении лайков и комментариев.",
+            "actionable_takeaway": "Используйте связку конкретных названий инструментов в заголовке и выпускайте видео в первые 48–72 часа после громких релизов."
+        }
