@@ -17,4 +17,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD exec streamlit run dashboard/app.py --server.port=${PORT:-8080} --server.address=0.0.0.0 --server.headless=true
+CMD exec streamlit run dashboard/0_🏠_Главная.py --server.port=${PORT:-8080} --server.address=0.0.0.0 --server.headless=true

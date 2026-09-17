@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from utils.api_client import APIClient
 
-st.set_page_config(page_title="Управление конкурентами", page_icon="⚙️", layout="wide")
+st.set_page_config(page_title="Управление каналами", page_icon="⚙️", layout="wide")
 st.title("⚙️ Управление списком отслеживаемых каналов")
 st.caption("Добавляйте и удаляйте каналы конкурентов для автоматического ежедневного мониторинга и сбора метрик.")
 
@@ -14,7 +14,7 @@ with st.form("add_channel_form"):
     col1, col2 = st.columns([3, 1])
     with col1:
         channel_input = st.text_input(
-            "Handle или ссылка на YouTube канал",
+            "Handle или ссылка на YouTube-канал",
             value="@GoogleCloud",
             placeholder="@MKBHD, @veritasium или ID канала"
         )
@@ -43,9 +43,17 @@ st.subheader("📋 Зарегистрированные каналы")
 channels = client.get_channels()
 if channels:
     df = pd.DataFrame(channels)
-    cols = ["title", "custom_url", "subscriber_count", "view_count", "video_count", "country"]
-    avail = [c for c in cols if c in df.columns]
-    st.dataframe(df[avail], use_container_width=True)
+    column_mapping = {
+        "title": "Название канала",
+        "custom_url": "Handle / Ссылка",
+        "subscriber_count": "Подписчики",
+        "view_count": "Просмотры",
+        "video_count": "Всего видео",
+        "country": "Страна"
+    }
+    avail = [c for c in column_mapping.keys() if c in df.columns]
+    df_display = df[avail].rename(columns=column_mapping)
+    st.dataframe(df_display, use_container_width=True)
 
     # Section to delete a channel
     st.markdown("---")

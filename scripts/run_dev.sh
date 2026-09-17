@@ -12,6 +12,6 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload &
 
 # Start Streamlit dashboard
 echo "Starting Streamlit dashboard on http://localhost:8501..."
-streamlit run dashboard/app.py --server.port 8501 --server.headless true &
+streamlit run "dashboard/0_🏠_Главная.py" --server.port 8501 --server.headless true &
 
 wait

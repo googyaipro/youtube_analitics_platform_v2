@@ -2,9 +2,9 @@ import streamlit as st
 import plotly.graph_objects as go
 from utils.api_client import APIClient
 
-st.set_page_config(page_title="AI-Аналитик (Интерактивный чат)", page_icon="💬", layout="wide")
+st.set_page_config(page_title="AI-Аналитик (Gemini)", page_icon="💬", layout="wide")
 st.title("💬 AI-Аналитик YouTube (Gemini 3.5 Flash)")
-st.caption("Интеллектуальный анализ каналов, выявление аномалий и генерация интерактивных графиков Plotly.")
+st.caption("Интеллектуальный анализ каналов, выявление аномалий и автоматическое построение интерактивных графиков.")
 
 client = APIClient()
 
@@ -13,7 +13,7 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
         {
             "role": "assistant",
-            "content": "Привет! Я твой YouTube AI-аналитик. Спроси меня, например:\n- *Сравни вовлеченность и просмотры видео @GoogleCloud*\n- *Какое видео набрало больше всего просмотров у @MKBHD?*",
+            "content": "Привет! Я твой YouTube AI-аналитик. Спроси меня, например:\n- *Сравни вовлеченность и просмотры видео @GoogleCloud*\n- *Какое видео набрало больше всего просмотров у @GoogleCloud?*",
             "chart": None
         }
     ]

@@ -3,15 +3,15 @@ import pandas as pd
 import plotly.express as px
 from utils.api_client import APIClient
 
-st.set_page_config(page_title="Мониторинг конкурентов (Time-Series)", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Динамика конкурентов", page_icon="📈", layout="wide")
 st.title("📈 Мониторинг конкурентов: Динамика и лидерборды")
-st.caption("Прямые быстрые запросы к View в BigQuery (v_latest_channel_stats) без расхода квот YouTube API.")
+st.caption("Быстрые запросы к хранилищу BigQuery (v_latest_channel_stats) без расхода квот YouTube API.")
 
 client = APIClient()
 channels = client.get_channels()
 
 if not channels:
-    st.info("В базе данных пока нет каналов. Добавьте первый канал во вкладке **Управление списком**.")
+    st.info("В базе данных пока нет каналов. Добавьте первый канал во вкладке **⚙️ Управление каналами**.")
 else:
     df_channels = pd.DataFrame(channels)
 
@@ -47,6 +47,14 @@ else:
 
     st.markdown("---")
     st.subheader("📋 Сводная таблица каналов")
-    cols_to_show = ["title", "custom_url", "subscriber_count", "view_count", "video_count", "country"]
-    available_cols = [c for c in cols_to_show if c in df_channels.columns]
-    st.dataframe(df_channels[available_cols], use_container_width=True)
+    column_mapping = {
+        "title": "Название канала",
+        "custom_url": "Handle / Ссылка",
+        "subscriber_count": "Подписчики",
+        "view_count": "Просмотры",
+        "video_count": "Всего видео",
+        "country": "Страна"
+    }
+    cols_to_show = [c for c in column_mapping.keys() if c in df_channels.columns]
+    df_display = df_channels[cols_to_show].rename(columns=column_mapping)
+    st.dataframe(df_display, use_container_width=True)
