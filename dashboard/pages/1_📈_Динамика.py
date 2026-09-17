@@ -47,14 +47,29 @@ else:
 
     st.markdown("---")
     st.subheader("📋 Сводная таблица каналов")
+    df_channels["channel_url"] = df_channels.apply(
+        lambda r: f"https://www.youtube.com/{r['custom_url']}" if r.get("custom_url") and str(r["custom_url"]).startswith("@") else f"https://www.youtube.com/channel/{r['channel_id']}",
+        axis=1
+    )
     column_mapping = {
         "title": "Название канала",
-        "custom_url": "Handle / Ссылка",
+        "custom_url": "Handle",
         "subscriber_count": "Подписчики",
         "view_count": "Просмотры",
         "video_count": "Всего видео",
-        "country": "Страна"
+        "country": "Страна",
+        "channel_url": "YouTube"
     }
     cols_to_show = [c for c in column_mapping.keys() if c in df_channels.columns]
     df_display = df_channels[cols_to_show].rename(columns=column_mapping)
-    st.dataframe(df_display, use_container_width=True)
+    st.dataframe(
+        df_display,
+        column_config={
+            "YouTube": st.column_config.LinkColumn("YouTube", display_text="🔗 Открыть канал"),
+            "Подписчики": st.column_config.NumberColumn("Подписчики", format="%d"),
+            "Просмотры": st.column_config.NumberColumn("Просмотры", format="%d"),
+            "Всего видео": st.column_config.NumberColumn("Всего видео", format="%d"),
+        },
+        hide_index=True,
+        use_container_width=True
+    )

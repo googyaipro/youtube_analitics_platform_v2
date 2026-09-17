@@ -37,29 +37,93 @@ else:
 
 st.markdown("---")
 
-left_col, right_col = st.columns([2, 1])
+# Section: Top Videos by Views
+st.subheader("🔥 Топ роликов по просмотрам")
+videos = client.get_videos(limit=20)
 
-with left_col:
-    st.subheader("🔥 Топ роликов по просмотрам")
-    videos = client.get_videos(limit=10)
-    if videos:
-        df_videos = pd.DataFrame(videos)
+if videos:
+    df_videos = pd.DataFrame(videos)
+    # Generate direct YouTube link
+    df_videos["youtube_url"] = "https://www.youtube.com/watch?v=" + df_videos["video_id"].astype(str)
+    if "channel_title" not in df_videos.columns or df_videos["channel_title"].isnull().all():
+        df_videos["channel_title"] = "YouTube Канал"
+
+    df_videos["short_title"] = df_videos["title"].apply(lambda t: t[:45] + "..." if len(str(t)) > 45 else str(t))
+
+    chart_col, preview_col = st.columns([3, 2])
+
+    with chart_col:
+        # Plotly horizontal bar chart colored by channel
         fig = px.bar(
-            df_videos,
+            df_videos.head(10),
             x="view_count",
-            y="title",
+            y="short_title",
             orientation="h",
-            labels={"view_count": "Просмотры", "title": "Название видео"},
-            color="view_count",
-            color_continuous_scale="Reds"
+            color="channel_title",
+            labels={
+                "view_count": "Количество просмотров",
+                "short_title": "Видео",
+                "channel_title": "Канал"
+            },
+            hover_name="title",
+            hover_data={
+                "view_count": ":,",
+                "like_count": ":,",
+                "channel_title": True,
+                "short_title": False
+            },
+            title="Топ-10 видео (с разбивкой по каналам)"
         )
-        fig.update_layout(yaxis={"autorange": "reversed"}, height=400)
+        fig.update_layout(
+            yaxis={"autorange": "reversed"},
+            height=430,
+            margin=dict(l=10, r=10, t=40, b=10),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
         st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Нет данных о видео. Перейдите во вкладку '⚙️ Управление каналами' для синхронизации.")
 
-with right_col:
-    st.subheader("📌 Архитектурный статус")
+    with preview_col:
+        st.markdown("##### 🏆 Лидеры просмотров")
+        top_3 = df_videos.head(3)
+        for _, v in top_3.iterrows():
+            with st.container(border=True):
+                card_img, card_info = st.columns([1, 2])
+                with card_img:
+                    thumb = v.get("thumbnail_url")
+                    if thumb:
+                        st.image(thumb, use_container_width=True)
+                with card_info:
+                    st.markdown(f"**[{v['title']}]({v['youtube_url']})**")
+                    st.caption(f"📺 Канал: **{v.get('channel_title', 'Не указан')}**")
+                    st.markdown(f"👁️ **{v['view_count']:,}** просмотров • 👍 **{v.get('like_count', 0):,}**")
+                    st.link_button("▶️ Открыть на YouTube", v["youtube_url"], use_container_width=True)
+
+    # Detailed Table with Direct Links and Thumbnails
+    st.markdown("#### 📋 Детальная таблица роликов")
+    display_cols = ["thumbnail_url", "title", "channel_title", "view_count", "like_count", "published_at", "youtube_url"]
+    existing_cols = [c for c in display_cols if c in df_videos.columns]
+
+    st.dataframe(
+        df_videos[existing_cols],
+        column_config={
+            "thumbnail_url": st.column_config.ImageColumn("Обложка", width="small"),
+            "title": st.column_config.TextColumn("Название видео", width="large"),
+            "channel_title": st.column_config.TextColumn("Канал", width="medium"),
+            "view_count": st.column_config.NumberColumn("Просмотры", format="%d"),
+            "like_count": st.column_config.NumberColumn("Лайки", format="%d"),
+            "published_at": st.column_config.DatetimeColumn("Дата публикации", format="DD.MM.YYYY HH:mm"),
+            "youtube_url": st.column_config.LinkColumn("YouTube", display_text="▶️ Смотреть"),
+        },
+        hide_index=True,
+        use_container_width=True
+    )
+else:
+    st.info("Нет данных о видео. Перейдите во вкладку '⚙️ Управление каналами' для синхронизации.")
+
+st.markdown("---")
+
+# Architectural overview in an expander
+with st.expander("📌 Архитектурный статус платформы (Google Cloud)", expanded=False):
     st.markdown("""
     - **Очереди задач**: Google Cloud Tasks (`telegram-tasks`)
     - **Горячий кэш**: Firestore Native Mode (TTL 24h, <50ms)
@@ -68,8 +132,8 @@ with right_col:
     - **AI Core**: Vertex AI Gemini 3.5 Flash
     
     👉 **Разделы в боковом меню:**
-    - **🏠 Главная**: Сводные KPI и топ видеороликов
+    - **🏠 Главная**: Сводные KPI, топ видеороликов и прямые ссылки на YouTube
     - **📈 Динамика**: Анализ трендов и лидерборды конкурентов
     - **💬 AI-Аналитик**: Интеллектуальный диалог с Gemini 3.5 Flash
-    - **⚙️ Управление каналами**: Добавление и удаление каналов
+    - **⚙️ Управление каналами**: Добавление и удаление каналов, пользователи Telegram
     """)
