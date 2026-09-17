@@ -15,8 +15,8 @@ with st.form("add_channel_form"):
     with col1:
         channel_input = st.text_input(
             "Handle или ссылка на YouTube-канал",
-            value="@GoogleCloud",
-            placeholder="@MKBHD, @veritasium или ID канала"
+            value="",
+            placeholder="Например: @juliangoldieseo или ссылка на канал"
         )
     with col2:
         max_videos = st.number_input("Начальный срез видео", min_value=5, max_value=50, value=10)

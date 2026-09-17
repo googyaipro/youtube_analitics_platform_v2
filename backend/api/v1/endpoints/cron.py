@@ -38,11 +38,8 @@ async def track_competitors_cron(
     # 1. Fetch tracked channels
     channels_data = bq.get_channels()
     if not channels_data:
-        # Fallback to seed default demo channels if none tracked
-        default_channel = yt.get_channel("@GoogleCloud")
-        if default_channel:
-            bq.insert_channel(default_channel)
-            channels_data = [default_channel.model_dump()]
+        logger.info("No tracked channels found in BigQuery. Cron job completed.")
+        return {"status": "SUCCESS", "message": "No channels to track.", "snapshots_saved": 0}
 
     channel_ids = [c["channel_id"] for c in channels_data if "channel_id" in c]
     

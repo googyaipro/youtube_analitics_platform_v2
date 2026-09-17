@@ -11,7 +11,7 @@ router = APIRouter(prefix="/ingestion", tags=["Data Ingestion & Pipeline"])
 
 
 class SyncRequest(BaseModel):
-    channel_identifier: str = Field(..., description="Channel handle (e.g. @GoogleCloud) or Channel ID")
+    channel_identifier: str = Field(..., description="Channel handle (e.g. @juliangoldieseo) or Channel ID")
     max_videos: int = Field(20, ge=1, le=100, description="Number of recent videos to ingest")
 
 

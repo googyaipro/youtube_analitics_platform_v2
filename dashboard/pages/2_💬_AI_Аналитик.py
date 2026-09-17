@@ -13,7 +13,7 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
         {
             "role": "assistant",
-            "content": "Привет! Я твой YouTube AI-аналитик. Спроси меня, например:\n- *Сравни вовлеченность и просмотры видео @GoogleCloud*\n- *Какое видео набрало больше всего просмотров у @GoogleCloud?*",
+            "content": "Привет! Я твой YouTube AI-аналитик. Спроси меня, например:\n- *Сравни вовлеченность и просмотры видео @juliangoldieseo*\n- *Какое видео набрало больше всего просмотров у Jack Roberts?*",
             "chart": None
         }
     ]

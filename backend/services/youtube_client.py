@@ -102,7 +102,7 @@ class YouTubeClient:
 
         except HttpError as e:
             logger.error(f"Error fetching channel: {e}")
-            return self._generate_mock_channel(channel_identifier)
+            return None
 
     def get_channel_uploads(self, channel_id: str, max_results: int = 20) -> List[Video]:
         """
@@ -181,7 +181,7 @@ class YouTubeClient:
 
         except HttpError as e:
             logger.error(f"Error fetching uploads: {e}")
-            return self._generate_mock_videos(channel_id, count=max_results)
+            return []
 
     def get_channel_videos(self, channel_id: str, max_results: int = 20) -> List[Video]:
         """Alias for get_channel_uploads for backwards compatibility."""
