@@ -39,23 +39,54 @@ st.markdown("---")
 
 # Section: Top Videos by Views
 st.subheader("🔥 Топ роликов по просмотрам")
-videos = client.get_videos(limit=20)
+
+# Channel filter & Limit selection
+channels = client.get_channels()
+channel_options = {"Все каналы": None}
+if channels and not isinstance(channels, dict):
+    for c in channels:
+        label = c.get("title") or c.get("custom_url") or c.get("channel_id")
+        if c.get("custom_url"):
+            label = f"{c.get('title')} ({c.get('custom_url')})"
+        channel_options[label] = c.get("channel_id")
+
+col_filter, col_limit = st.columns([3, 1])
+with col_filter:
+    selected_channel_label = st.selectbox(
+        "Фильтр по каналу:",
+        options=list(channel_options.keys()),
+        index=0,
+        help="Выберите конкретный канал или просматривайте общий рейтинг по всем конкурентам"
+    )
+with col_limit:
+    selected_limit = st.selectbox(
+        "Количество роликов:",
+        options=[10, 20, 30, 50],
+        index=1,
+        help="Максимальное число видео в выборке"
+    )
+
+selected_channel_id = channel_options.get(selected_channel_label)
+videos = client.get_videos(channel_id=selected_channel_id, limit=selected_limit)
 
 if videos:
     df_videos = pd.DataFrame(videos)
     # Generate direct YouTube link
     df_videos["youtube_url"] = "https://www.youtube.com/watch?v=" + df_videos["video_id"].astype(str)
     if "channel_title" not in df_videos.columns or df_videos["channel_title"].isnull().all():
-        df_videos["channel_title"] = "YouTube Канал"
+        df_videos["channel_title"] = selected_channel_label if selected_channel_id else "YouTube Канал"
+    df_videos["channel_title"] = df_videos["channel_title"].fillna("YouTube Канал")
 
     df_videos["short_title"] = df_videos["title"].apply(lambda t: t[:45] + "..." if len(str(t)) > 45 else str(t))
 
     chart_col, preview_col = st.columns([3, 2])
 
     with chart_col:
+        chart_n = min(10, len(df_videos))
+        chart_title = f"Топ-{chart_n} видео ({selected_channel_label})" if selected_channel_id else f"Топ-{chart_n} видео (с разбивкой по каналам)"
         # Plotly horizontal bar chart colored by channel
         fig = px.bar(
-            df_videos.head(10),
+            df_videos.head(chart_n),
             x="view_count",
             y="short_title",
             orientation="h",
@@ -72,7 +103,7 @@ if videos:
                 "channel_title": True,
                 "short_title": False
             },
-            title="Топ-10 видео (с разбивкой по каналам)"
+            title=chart_title
         )
         fig.update_layout(
             yaxis={"autorange": "reversed"},
@@ -118,7 +149,10 @@ if videos:
         use_container_width=True
     )
 else:
-    st.info("Нет данных о видео. Перейдите во вкладку '⚙️ Управление каналами' для синхронизации.")
+    if selected_channel_id:
+        st.info(f"Нет данных о видео для канала **{selected_channel_label}**.")
+    else:
+        st.info("Нет данных о видео. Перейдите во вкладку '⚙️ Управление каналами' для синхронизации.")
 
 st.markdown("---")
 
