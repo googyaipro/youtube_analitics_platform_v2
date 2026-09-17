@@ -102,6 +102,12 @@ if [ -n "${TELEGRAM_BOT_TOKEN}" ]; then
         -d "secret_token=${TELEGRAM_WEBHOOK_SECRET}" \
         -d "drop_pending_updates=true" >/dev/null 2>&1 || true
     echo "Telegram webhook registered successfully."
+
+    echo "Registering Telegram bot commands menu..."
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setMyCommands" \
+        -H "Content-Type: application/json" \
+        -d '{"commands":[{"command":"help","description":"Справка и список команд"},{"command":"list","description":"Список отслеживаемых каналов"},{"command":"users","description":"Пользователи бота (админ)"},{"command":"add","description":"Добавить канал (@handle)"},{"command":"delete","description":"Удалить канал (@handle)"}]}' >/dev/null 2>&1 || true
+    echo "Telegram bot commands registered."
 fi
 
 echo "=============================================================="

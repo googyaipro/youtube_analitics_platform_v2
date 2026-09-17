@@ -70,8 +70,14 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
             )
         return
 
-    # Handle /users command (Admin only)
-    if text.strip() == "/users":
+    # Parse command and arguments
+    clean_text = text.strip()
+    first_word = clean_text.split()[0].lower() if clean_text else ""
+    # Strip @bot_username if sent as /command@botname (standard Telegram client behavior in chats)
+    cmd = first_word.split("@")[0] if first_word.startswith("/") else ""
+
+    # Handle /users or /user command (Admin only)
+    if cmd in ("/users", "/user"):
         if settings.TELEGRAM_ADMIN_CHAT_ID and chat_id != str(settings.TELEGRAM_ADMIN_CHAT_ID):
             bot.send_message(chat_id, "⚠️ Команда `/users` доступна только администратору бота.")
             return
@@ -88,14 +94,14 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
         bot.send_message(chat_id, "\n".join(lines))
         return
 
-    # Handle /start command
-    if text.strip() == "/start":
+    # Handle /start and /help commands
+    if cmd in ("/start", "/help"):
         welcome_msg = load_prompt("telegram_welcome.txt")
         bot.send_message(chat_id, welcome_msg)
         return
 
-    # Handle /list command
-    if text.strip() == "/list":
+    # Handle /list and /channels commands
+    if cmd in ("/list", "/channels"):
         channels = agent.bq.get_channels()
         if not channels:
             bot.send_message(chat_id, "ℹ️ Список отслеживаемых каналов пуст. Добавьте канал командой: `/add @handle`")
@@ -107,8 +113,12 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
         return
 
     # Handle /add command
-    if text.startswith("/add "):
-        handle = text.replace("/add ", "").strip()
+    if cmd == "/add":
+        parts = clean_text.split(maxsplit=1)
+        if len(parts) < 2:
+            bot.send_message(chat_id, "ℹ️ Укажите канал для добавления. Пример:\n`/add @juliangoldieseo`")
+            return
+        handle = parts[1].strip()
         bot.send_chat_action(chat_id, "typing")
         bot.send_message(chat_id, f"⏳ Добавляю канал *{handle}* в мониторинг...")
         ch = agent.yt.get_channel(handle)
@@ -128,9 +138,13 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
             bot.send_message(chat_id, f"❌ Канал '{handle}' не найден в YouTube.")
         return
 
-    # Handle /delete command
-    if text.startswith("/delete ") or text.startswith("/remove "):
-        target = text.split(maxsplit=1)[1].strip()
+    # Handle /delete or /remove command
+    if cmd in ("/delete", "/remove"):
+        parts = clean_text.split(maxsplit=1)
+        if len(parts) < 2:
+            bot.send_message(chat_id, "ℹ️ Укажите канал для удаления. Пример:\n`/delete @handle`")
+            return
+        target = parts[1].strip()
         channels = agent.bq.get_channels()
         target_id = None
         target_title = target
@@ -144,6 +158,15 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
             bot.send_message(chat_id, f"🗑️ Канал **{target_title}** успешно удален из мониторинга.")
         else:
             bot.send_message(chat_id, f"Канал '{target}' не найден в вашем списке отслеживаемых каналов.")
+        return
+
+    # Reject unknown slash commands
+    if cmd:
+        bot.send_message(
+            chat_id,
+            f"⚠️ Неизвестная команда `{cmd}`.\n\n"
+            f"Используйте `/help` для просмотра списка команд или отправьте текстовый запрос (например: *Сравни последние видео @juliangoldieseo*)."
+        )
         return
 
     # Send typing status

@@ -78,21 +78,42 @@ class AgentOrchestrator:
         }
 
     def _extract_channel(self, text: str) -> str:
-        # Search for @handle
+        # 1. Search for explicit @handle
         handle_match = re.search(r"@[A-Za-z0-9_.-]+", text)
         if handle_match:
             return handle_match.group(0)
 
-        # Search for common channel names
+        # 2. Check against active tracked channels in BigQuery
         lowered = text.lower()
+        try:
+            channels = self.bq.get_channels()
+            if channels:
+                # Direct match by title or custom_url handle
+                for c in channels:
+                    title = (c.get("title") or "").lower()
+                    custom_url = (c.get("custom_url") or "").lower().lstrip("@")
+                    if (title and title in lowered) or (custom_url and custom_url in lowered):
+                        return c.get("custom_url") or c.get("channel_id")
+
+                # Keyword match by significant title words (e.g., "мастодонт", "иишенка", "goldie", "roberts")
+                for c in channels:
+                    title_words = [w for w in (c.get("title") or "").lower().split() if len(w) > 3]
+                    if any(w in lowered for w in title_words):
+                        return c.get("custom_url") or c.get("channel_id")
+
+                # If the user asked an analytical question without naming a channel, default to the top tracked channel
+                top_channel = channels[0]
+                return top_channel.get("custom_url") or top_channel.get("channel_id")
+        except Exception as e:
+            logger.warning(f"Error querying tracked channels in orchestrator: {e}")
+
+        # 3. Fallback for common creator names
         if "mkbhd" in lowered or "marques" in lowered:
             return "@MKBHD"
-        if "google" in lowered:
-            return "@GoogleCloud"
         if "beast" in lowered:
             return "@MrBeast"
         if "veritasium" in lowered:
             return "@veritasium"
-        
-        # Default fallback demo channel
-        return "@GoogleCloud"
+
+        # 4. Default active competitor fallback
+        return "@juliangoldieseo"
