@@ -92,11 +92,23 @@ rm -f Dockerfile.backend
 
 DASHBOARD_URL=$(gcloud run services describe youtube-dashboard --region "${REGION}" --format="value(status.url)" --project "${PROJECT_ID}")
 
+# -------------------------------------------------------------
+# 4. Auto-register Telegram Webhook
+# -------------------------------------------------------------
+if [ -n "${TELEGRAM_BOT_TOKEN}" ]; then
+    echo "Registering Telegram webhook to ${BACKEND_URL}/api/telegram/webhook..."
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+        -d "url=${BACKEND_URL}/api/telegram/webhook" \
+        -d "secret_token=${TELEGRAM_WEBHOOK_SECRET}" \
+        -d "drop_pending_updates=true" >/dev/null 2>&1 || true
+    echo "Telegram webhook registered successfully."
+fi
+
 echo "=============================================================="
 echo "🎉 Deployment successfully finished!"
 echo "• Backend API:    ${BACKEND_URL}"
 echo "• Dashboard UI:   ${DASHBOARD_URL}"
 echo "• Code Sandbox:   ${SANDBOX_URL}"
 echo "• Health Check:   curl -s ${BACKEND_URL}/health"
-echo "• Setup Webhook:  curl -F 'url=${BACKEND_URL}/api/telegram/webhook' https://api.telegram.org/bot<TOKEN>/setWebhook"
+echo "• Webhook Status: curl -s https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 echo "=============================================================="
