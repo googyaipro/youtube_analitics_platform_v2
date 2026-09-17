@@ -96,7 +96,12 @@ class FirestoreCache:
 
         return True
 
-    def register_telegram_subscriber(self, chat_id: int | str, user_info: Optional[Dict[str, Any]] = None):
+    def register_telegram_subscriber(
+        self,
+        chat_id: int | str,
+        user_info: Optional[Dict[str, Any]] = None,
+        is_allowed: bool = True
+    ):
         """Register or update a Telegram user subscribed to daily morning digests."""
         if not self.is_connected:
             return
@@ -105,6 +110,7 @@ class FirestoreCache:
             payload = {
                 "chat_id": str(chat_id),
                 "is_active": True,
+                "is_allowed": is_allowed,
                 "updated_at": datetime.now(timezone.utc),
             }
             if user_info:
@@ -113,17 +119,39 @@ class FirestoreCache:
                     "first_name": user_info.get("first_name"),
                 })
             doc_ref.set(payload, merge=True)
-            logger.info(f"Registered Telegram subscriber: {chat_id}")
+            logger.info(f"Registered Telegram subscriber: {chat_id} (allowed={is_allowed})")
         except Exception as e:
             logger.error(f"Error registering Telegram subscriber: {e}")
 
     def get_telegram_subscribers(self) -> list[str]:
-        """Get all active chat IDs subscribed to morning digests."""
+        """Get all active and allowed chat IDs subscribed to morning digests."""
         if not self.is_connected:
             return []
         try:
-            docs = self._db.collection("telegram_subscribers").where("is_active", "==", True).stream()
+            docs = (
+                self._db.collection("telegram_subscribers")
+                .where("is_active", "==", True)
+                .where("is_allowed", "==", True)
+                .stream()
+            )
             return [doc.id for doc in docs]
         except Exception as e:
             logger.error(f"Error fetching subscribers from Firestore: {e}")
+            return []
+
+    def get_all_subscribers(self) -> list[Dict[str, Any]]:
+        """Retrieve all recorded Telegram users with their access status for dashboard and admin."""
+        if not self.is_connected:
+            return []
+        try:
+            docs = self._db.collection("telegram_subscribers").stream()
+            results = []
+            for doc in docs:
+                data = doc.to_dict()
+                if "updated_at" in data and isinstance(data["updated_at"], datetime):
+                    data["updated_at"] = data["updated_at"].isoformat()
+                results.append(data)
+            return sorted(results, key=lambda x: str(x.get("updated_at", "")), reverse=True)
+        except Exception as e:
+            logger.error(f"Error listing all subscribers from Firestore: {e}")
             return []

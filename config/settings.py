@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     TELEGRAM_WEBHOOK_SECRET: Optional[str] = "secret-tg-token-xyz"
     TELEGRAM_ADMIN_CHAT_ID: Optional[str] = None
+    TELEGRAM_ALLOWED_USERS: str = ""  # Comma-separated chat_ids or usernames
     
     # Google Cloud Platform
     GCP_PROJECT_ID: str = "gen-lang-client-0428255657"

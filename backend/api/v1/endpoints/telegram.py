@@ -48,3 +48,11 @@ async def telegram_webhook(
         logger.info("Executed via local BackgroundTasks fallback.")
 
     return {"ok": True, "enqueued": enqueued}
+
+
+@router.get("/subscribers", response_model=list[Dict[str, Any]])
+def list_telegram_subscribers():
+    """List all registered Telegram bot users and their authorization status."""
+    from backend.services.firestore_cache import FirestoreCache
+    cache = FirestoreCache()
+    return cache.get_all_subscribers()

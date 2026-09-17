@@ -75,3 +75,34 @@ if channels:
                 st.error(f"Ошибка удаления: {del_result.get('message')}")
 else:
     st.info("Реестр каналов пуст. Зарегистрируйте свой первый канал выше.")
+
+# -------------------------------------------------------------
+# Section: Telegram Bot Users & Access Control
+# -------------------------------------------------------------
+st.markdown("---")
+st.subheader("👥 Пользователи Telegram-бота (Доступ и безопасность)")
+st.caption("Список клиентов, подключившихся к Telegram-боту, и статус их авторизации (Whitelist).")
+
+subscribers = client.get_telegram_subscribers()
+if subscribers:
+    df_subs = pd.DataFrame(subscribers)
+    if "is_allowed" in df_subs.columns:
+        df_subs["Статус доступа"] = df_subs["is_allowed"].apply(lambda x: "🟢 Разрешен" if x else "⛔ Ограничен")
+    else:
+        df_subs["Статус доступа"] = "🟢 Разрешен"
+
+    if "is_active" in df_subs.columns:
+        df_subs["Дайджест"] = df_subs["is_active"].apply(lambda x: "🔔 Подписан" if x else "🔕 Отключен")
+
+    col_sub_mapping = {
+        "first_name": "Имя",
+        "username": "Telegram Username",
+        "chat_id": "Telegram Chat ID",
+        "updated_at": "Последняя активность"
+    }
+    cols_to_use = ["Статус доступа", "first_name", "username", "chat_id", "Дайджест", "updated_at"]
+    existing_cols = [c for c in cols_to_use if c in df_subs.columns]
+    df_subs_display = df_subs[existing_cols].rename(columns=col_sub_mapping)
+    st.dataframe(df_subs_display, use_container_width=True)
+else:
+    st.info("Пока нет зарегистрированных пользователей в Telegram-боте.")

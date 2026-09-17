@@ -6,10 +6,12 @@ from backend.prompts import load_prompt
 from backend.services.agent_orchestrator import AgentOrchestrator
 from backend.services.firestore_cache import FirestoreCache
 from backend.services.telegram_bot import TelegramBotService
+from config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tasks", tags=["Cloud Tasks Workers"])
 
+settings = get_settings()
 agent = AgentOrchestrator()
 bot = TelegramBotService()
 cache = FirestoreCache()
@@ -21,14 +23,69 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
     if not message:
         return
 
-    chat_id = message.get("chat", {}).get("id")
+    chat_id = str(message.get("chat", {}).get("id"))
     text = message.get("text", "")
     if not chat_id or not text:
         return
 
-    # Register user as active subscriber for daily morning digests
     from_user = message.get("from", {})
-    cache.register_telegram_subscriber(chat_id, from_user)
+    username = (from_user.get("username") or "").lower().strip()
+    first_name = from_user.get("first_name", "User")
+
+    # 1. Access Control (Whitelist)
+    allowed_tokens = set()
+    if settings.TELEGRAM_ADMIN_CHAT_ID:
+        allowed_tokens.add(str(settings.TELEGRAM_ADMIN_CHAT_ID).strip())
+    if settings.TELEGRAM_ALLOWED_USERS:
+        for u in settings.TELEGRAM_ALLOWED_USERS.split(","):
+            token = u.strip().lstrip("@").lower()
+            if token:
+                allowed_tokens.add(token)
+
+    is_allowed = True
+    if allowed_tokens:
+        is_allowed = (chat_id in allowed_tokens) or (username in allowed_tokens)
+
+    # Register user in Firestore with their authorization status
+    cache.register_telegram_subscriber(chat_id, from_user, is_allowed=is_allowed)
+
+    if not is_allowed:
+        logger.warning(f"Unauthorized access attempt to Telegram bot by {first_name} (@{username}, ID: {chat_id})")
+        bot.send_message(
+            chat_id,
+            f"⛔ **Доступ ограничен**\n\n"
+            f"Этот бот является закрытой аналитической платформой компании.\n"
+            f"Ваш Telegram ID: `{chat_id}`\n\n"
+            f"Для получения доступа обратитесь к администратору."
+        )
+        # Notify admin of unauthorized attempt
+        if settings.TELEGRAM_ADMIN_CHAT_ID and str(settings.TELEGRAM_ADMIN_CHAT_ID) != chat_id:
+            bot.send_message(
+                settings.TELEGRAM_ADMIN_CHAT_ID,
+                f"🔔 **Попытка доступа к боту!**\n"
+                f"• Пользователь: **{first_name}** (@{username or 'без_юзернейма'})\n"
+                f"• ID: `{chat_id}`\n"
+                f"• Сообщение: _{text}_"
+            )
+        return
+
+    # Handle /users command (Admin only)
+    if text.strip() == "/users":
+        if settings.TELEGRAM_ADMIN_CHAT_ID and chat_id != str(settings.TELEGRAM_ADMIN_CHAT_ID):
+            bot.send_message(chat_id, "⚠️ Команда `/users` доступна только администратору бота.")
+            return
+        subscribers = cache.get_all_subscribers()
+        if not subscribers:
+            bot.send_message(chat_id, "ℹ️ Список пользователей пуст.")
+            return
+        lines = ["👥 **Зарегистрированные пользователи бота:**\n"]
+        for idx, u in enumerate(subscribers, 1):
+            status_icon = "🟢" if u.get("is_allowed", True) else "⛔"
+            uname = f"@{u.get('username')}" if u.get("username") else "без username"
+            name = u.get("first_name", "Не указано")
+            lines.append(f"{idx}. {status_icon} **{name}** ({uname}) — ID: `{u.get('chat_id')}`")
+        bot.send_message(chat_id, "\n".join(lines))
+        return
 
     # Handle /start command
     if text.strip() == "/start":

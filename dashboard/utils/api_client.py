@@ -72,3 +72,11 @@ class APIClient:
             return resp.json()
         except Exception as e:
             return {"status": "ERROR", "message": str(e)}
+
+    def get_telegram_subscribers(self) -> List[Dict[str, Any]]:
+        try:
+            resp = requests.get(f"{self.base_url}/telegram/subscribers", timeout=10)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception:
+            return []
