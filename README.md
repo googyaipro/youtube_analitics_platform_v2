@@ -14,7 +14,7 @@ flowchart TD
     end
 
     subgraph Trigger ["Оркестрация и Очереди"]
-        Cron["⏰ Cloud Scheduler\n(Ежедневный сбор метрик 08:00 UTC)"]
+        Cron["⏰ Cloud Scheduler\n(Ежедневный AI-дайджест 12:00 Europe/Helsinki)"]
         CT["📬 Cloud Tasks (telegram-tasks)\n(Очередь задач TG + Dedicated CPU)"]
     end
 
@@ -122,7 +122,7 @@ youtube-analitics-platform/
 │   │       │   ├── analyze.py             # POST /api/analyze (AI-анализ + генерация кода)
 │   │       │   ├── channels.py            # GET /api/channels (реестр активных каналов)
 │   │       │   ├── competitors.py         # POST /api/competitors, DELETE /api/competitors/{id}
-│   │       │   ├── cron.py                # POST /api/cron/track-competitors (утренний сбор)
+│   │       │   ├── cron.py                # POST /api/cron/track-competitors (AI-дайджест 12:00 Europe/Helsinki)
 │   │       │   ├── ingestion.py           # POST /api/ingestion/sync-channel
 │   │       │   ├── tasks.py               # POST /api/tasks/process-telegram-message (Cloud Tasks)
 │   │       │   ├── telegram.py            # POST /api/telegram/webhook, GET /subscribers

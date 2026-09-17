@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
@@ -198,3 +199,94 @@ fig.update_layout(yaxis={'autorange': 'reversed'})
             "engagement_factor": f"Темп набора составляет {vph} просмотров в час при стабильном соотношении лайков и комментариев.",
             "actionable_takeaway": "Используйте связку конкретных названий инструментов в заголовке и выпускайте видео в первые 48–72 часа после громких релизов."
         }
+
+    def generate_daily_digest(
+        self,
+        channels_summary: List[Dict[str, Any]],
+        top_videos: List[Dict[str, Any]],
+        anomalies: List[str]
+    ) -> str:
+        """Generate an executive AI daily digest using Gemini 3.8 Flash for Telegram."""
+        today_str = datetime.now().strftime("%d.%m.%Y")
+        if not self.is_available or not top_videos:
+            return self._rule_based_daily_digest(today_str, channels_summary, top_videos, anomalies)
+
+        top_vids_compact = [
+            {
+                "title": v.get("title"),
+                "channel": v.get("channel_title"),
+                "views": v.get("view_count"),
+                "outlier_multiplier": f"{v.get('outlier_score', 1.0)}x",
+                "vph": v.get("velocity_vph", 0),
+                "er": f"{v.get('engagement_rate_pct', 0)}%"
+            }
+            for v in top_videos[:5]
+        ]
+
+        channels_compact = [
+            f"{c.get('title')}: {c.get('subscriber_count', 0):,} subs"
+            for c in channels_summary[:8]
+        ]
+
+        prompt = f"""
+Ты — ведущий YouTube AI-аналитик и стратег платформы. Подготовь ежедневный утренний дайджест для владельца канала на основе свежих данных конкурентов за сегодня ({today_str}).
+
+ДАННЫЕ МОНИТОРИНГА:
+• Отслеживаемые каналы: {', '.join(channels_compact)}
+• Аномалии и всплески: {json.dumps(anomalies, ensure_ascii=False) if anomalies else 'Стабильная динамика'}
+• Топ свежих видео конкурентов с факторным анализом:
+{json.dumps(top_vids_compact, ensure_ascii=False, indent=2)}
+
+ФОРМАТ СООБЩЕНИЯ (для Telegram, используй Markdown, эмодзи, выделение жирным):
+📢 **Ежедневный дайджест YouTube Analytics ({today_str})**
+
+📊 **Обзор ниши и динамика:**
+(2-3 емких предложения: что происходит у конкурентов, какие темы набирают просмотры, общий тренд)
+
+🔥 **Главный прорыв дня:**
+(Название топ-ролика, канал, просмотры, Outlier Score. В 2 предложениях объясни, почему тема или заголовок сработали)
+
+💡 **Стратегический совет (Actionable Takeaway):**
+(1-2 конкретных совета: какую идею, хук или формат сейчас стоит внедрить/снять на своем канале)
+
+Сделай текст живым, структурированным, экспертным и без лишней 'воды'. Объем — около 120-200 слов.
+"""
+        try:
+            response = self._model.generate_content(
+                prompt,
+                generation_config={"temperature": 0.4, "max_output_tokens": 800}
+            )
+            return response.text.strip()
+        except Exception as e:
+            logger.error(f"Error calling Gemini for daily digest ({e}), using fallback.")
+            return self._rule_based_daily_digest(today_str, channels_summary, top_videos, anomalies)
+
+    def _rule_based_daily_digest(
+        self,
+        today_str: str,
+        channels_summary: List[Dict[str, Any]],
+        top_videos: List[Dict[str, Any]],
+        anomalies: List[str]
+    ) -> str:
+        lines = [
+            f"📢 **Ежедневный дайджест YouTube Analytics ({today_str})**\n",
+            f"• Отслеживается каналов: **{len(channels_summary)}**",
+            f"• Статус сбора метрик: **Успешно**\n"
+        ]
+        if top_videos:
+            best = top_videos[0]
+            lines.append("🔥 **Главный хит дня:**")
+            lines.append(f"• «{best.get('title')}» ({best.get('channel_title')})")
+            lines.append(f"  Просмотры: **{best.get('view_count', 0):,}** | Темп: **{int(best.get('velocity_vph', 0))} просм/ч** | Outlier: **{best.get('outlier_score', 1.0)}x**\n")
+
+        if anomalies:
+            lines.append("⚡ **Аномалии роста:**")
+            for a in anomalies[:3]:
+                lines.append(f"• {a}")
+            lines.append("")
+        else:
+            lines.append("📊 **Динамика:** Стабильная динамика просмотров по отслеживаемым конкурентам.\n")
+
+        lines.append("💡 **Инсайт:** Выпускайте ролики по актуальным инфоповодам в первые 24-48 часов для максимизации алгоритмического охвата.")
+        return "\n".join(lines)
+

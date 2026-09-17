@@ -59,27 +59,20 @@ async def track_competitors_cron(
         recent_videos = yt.get_channel_uploads(ch.channel_id, max_results=5)
         if recent_videos:
             bq.insert_videos(recent_videos)
-            
-            # Check for viral spike (> 1M views)
-            for v in recent_videos:
-                if v.statistics.view_count > 500000:
-                    anomalies.append(f"Канал *{ch.snippet.title}*: ролик «{v.snippet.title}» набрал {v.statistics.view_count:,} просмотров!")
 
-    # 3. Morning digest
-    if anomalies:
-        anomalies_block = "\n🔥 **Обнаружены аномалии и лидеры роста:**\n" + "\n".join([f"• {a}" for a in anomalies])
-    else:
-        anomalies_block = "\nСтабильная динамика просмотров и подписчиков по всем отслеживаемым конкурентам."
+    # 3. Retrieve enriched videos with factor analysis (outlier_score, velocity, ER)
+    top_videos = bq.get_videos(limit=10)
+    for v in top_videos:
+        score = float(v.get("outlier_score") or 1.0)
+        views = int(v.get("view_count") or 0)
+        if score >= 1.8 and views >= 20000:
+            anomalies.append(f"Канал *{v.get('channel_title')}*: ролик «{v.get('title')}» набрал {views:,} просмотров ({score}x от нормы)!")
 
-    digest_template = load_prompt("morning_digest.txt")
-    digest_text = (
-        digest_template
-        .replace("{{date}}", today.strftime("%d.%m.%Y"))
-        .replace("{{snapshots_saved}}", str(snapshots_saved))
-        .replace("{{anomalies_block}}", anomalies_block)
-    )
+    # 4. Generate intelligent daily digest using Gemini 3.8 Flash
+    logger.info("Generating intelligent daily digest with Gemini 3.8 Flash...")
+    digest_text = gemini.generate_daily_digest(channels_data, top_videos, anomalies)
 
-    # 4. Broadcast to Telegram subscribers
+    # 5. Broadcast to Telegram subscribers
     subscribers = set(cache.get_telegram_subscribers())
     if settings.TELEGRAM_ADMIN_CHAT_ID:
         subscribers.add(str(settings.TELEGRAM_ADMIN_CHAT_ID))
