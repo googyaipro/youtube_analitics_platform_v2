@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Request
 
+from backend.prompts import load_prompt
 from backend.services.agent_orchestrator import AgentOrchestrator
 from backend.services.firestore_cache import FirestoreCache
 from backend.services.telegram_bot import TelegramBotService
@@ -31,18 +32,7 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
 
     # Handle /start command
     if text.strip() == "/start":
-        welcome_msg = (
-            "👋 **Добро пожаловать в YouTube Analytics Platform!**\n\n"
-            "Я помогу проанализировать каналы конкурентов, сравнить просмотры и динамику.\n\n"
-            "**Команды управления каналами:**\n"
-            "• `/list` — показать список отслеживаемых каналов\n"
-            "• `/add @handle` — добавить канал в мониторинг\n"
-            "• `/delete @handle` — удалить канал из мониторинга\n\n"
-            "**Примеры аналитических запросов:**\n"
-            "• *Сравни просмотры последних видео @MKBHD*\n"
-            "• *Покажи аналитику канала @GoogleCloud*\n"
-            "• *Какая вовлеченность у последних роликов MrBeast?*"
-        )
+        welcome_msg = load_prompt("telegram_welcome.txt")
         bot.send_message(chat_id, welcome_msg)
         return
 

@@ -3,6 +3,7 @@ from datetime import date, datetime
 from typing import Any, Dict
 from fastapi import APIRouter, Header, HTTPException
 
+from backend.prompts import load_prompt
 from backend.services.bigquery_service import BigQueryService
 from backend.services.firestore_cache import FirestoreCache
 from backend.services.gemini_service import GeminiService
@@ -68,15 +69,18 @@ async def track_competitors_cron(
                     anomalies.append(f"Канал *{ch.snippet.title}*: ролик «{v.snippet.title}» набрал {v.statistics.view_count:,} просмотров!")
 
     # 3. Morning digest
-    digest_text = (
-        f"📢 **Утренний дайджест YouTube Analytics ({today.strftime('%d.%m.%Y')}):**\n\n"
-        f"• Обновлено каналов: **{snapshots_saved}**\n"
-        f"• Статус сбора данных: **Успешно** (расход квоты: минимальный)\n"
-    )
     if anomalies:
-        digest_text += "\n🔥 **Обнаружены аномалии и лидеры роста:**\n" + "\n".join([f"• {a}" for a in anomalies])
+        anomalies_block = "\n🔥 **Обнаружены аномалии и лидеры роста:**\n" + "\n".join([f"• {a}" for a in anomalies])
     else:
-        digest_text += "\nСтабильная динамика просмотров и подписчиков по всем отслеживаемым конкурентам."
+        anomalies_block = "\nСтабильная динамика просмотров и подписчиков по всем отслеживаемым конкурентам."
+
+    digest_template = load_prompt("morning_digest.txt")
+    digest_text = (
+        digest_template
+        .replace("{{date}}", today.strftime("%d.%m.%Y"))
+        .replace("{{snapshots_saved}}", str(snapshots_saved))
+        .replace("{{anomalies_block}}", anomalies_block)
+    )
 
     # 4. Broadcast to Telegram subscribers
     subscribers = set(cache.get_telegram_subscribers())

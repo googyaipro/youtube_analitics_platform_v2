@@ -4,31 +4,32 @@ import re
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
+from backend.prompts import load_prompt
 from config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
 
 class AnalysisReport(BaseModel):
-    summary_text: str = Field(..., description="Comprehensive analytical summary in Russian/English")
-    key_findings: List[str] = Field(..., description="Bullet point insights on performance")
-    anomalies_detected: bool = Field(False, description="Whether viral spikes or drops were detected")
-    matplotlib_code: str = Field(..., description="Executable Python code using df and plt/sns for PNG")
-    plotly_code: str = Field(..., description="Executable Python code defining 'fig' using px or go for web")
+    summary_text: str = Field(..., description="High-level analytical summary")
+    key_findings: List[str] = Field(..., description="List of 3-4 bullet insights")
+    anomalies_detected: bool = Field(False, description="Flag for view or engagement anomalies")
+    matplotlib_code: str = Field(..., description="Python matplotlib code for static image")
+    plotly_code: str = Field(..., description="Python plotly code for interactive chart")
 
 
 class GeminiService:
     def __init__(self):
         settings = get_settings()
         self.project_id = settings.GCP_PROJECT_ID
-        self.location = settings.GCP_LOCATION
+        self.region = settings.GCP_REGION
         self.model_name = settings.GEMINI_MODEL
         self._model = None
 
         try:
             import vertexai
             from vertexai.generative_models import GenerativeModel
-            vertexai.init(project=self.project_id, location=self.location)
+            vertexai.init(project=self.project_id, location=self.region)
             self._model = GenerativeModel(self.model_name)
             logger.info("Vertex AI Gemini model initialized.")
         except Exception as e:
@@ -48,36 +49,13 @@ class GeminiService:
         if not self.is_available or not videos_data:
             return self._generate_rule_based_report(channel_title, videos_data, user_query)
 
-        prompt = f"""
-Ты — ведущий YouTube AI-аналитик и Data Scientist.
-Проанализируй показатели видео канала '{channel_title}'.
-Пользовательский вопрос/задача: {user_query or 'Сравни просмотры, вовлеченность и динамику последних видео.'}
-
-Датасет (передается в датафрейм `df`):
-{json.dumps(videos_data[:10], default=str, indent=2)}
-
-Требования к ответу:
-1. summary_text: четкий аналитический вывод на русском языке с цифрами (просмотры, лайки, ER).
-2. key_findings: 3-4 ключевых инсайта в виде списка.
-3. anomalies_detected: true, если есть аномальный всплеск просмотров или лайков.
-4. matplotlib_code: чистый исполняемый Python-код без markdown-блоков:
-   - использует `df` (колонки: title, view_count, like_count, comment_count).
-   - использует `plt` или `sns`.
-   - строит красивый, информативный горизонтальный барчарт или scatter plot.
-   - использует `plt.tight_layout()`.
-5. plotly_code: чистый исполняемый Python-код:
-   - использует `df` и `px`.
-   - создает объект `fig = px.bar(...)` или `fig = px.scatter(...)`.
-
-Ответь СТРОГО в формате валидного JSON со следующей структурой:
-{{
-  "summary_text": "...",
-  "key_findings": ["...", "..."],
-  "anomalies_detected": false,
-  "matplotlib_code": "...",
-  "plotly_code": "..."
-}}
-"""
+        template = load_prompt("analyzer.txt")
+        prompt = (
+            template
+            .replace("{{channel_title}}", channel_title)
+            .replace("{{user_query}}", user_query or "Сравни просмотры, вовлеченность и динамику последних видео.")
+            .replace("{{dataset_json}}", json.dumps(videos_data[:10], default=str, indent=2))
+        )
         try:
             response = self._model.generate_content(
                 prompt,

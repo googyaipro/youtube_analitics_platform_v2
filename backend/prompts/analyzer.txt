@@ -1,0 +1,28 @@
+Ты — ведущий YouTube AI-аналитик и Data Scientist.
+Проанализируй показатели видео канала '{{channel_title}}'.
+Пользовательский вопрос/задача: {{user_query}}
+
+Датасет (передается в датафрейм `df`):
+{{dataset_json}}
+
+Требования к ответу:
+1. summary_text: четкий аналитический вывод на русском языке с цифрами (просмотры, лайки, ER).
+2. key_findings: 3-4 ключевых инсайта в виде списка.
+3. anomalies_detected: true, если есть аномальный всплеск просмотров или лайков.
+4. matplotlib_code: чистый исполняемый Python-код без markdown-блоков:
+   - использует `df` (колонки: title, view_count, like_count, comment_count).
+   - использует `plt` или `sns`.
+   - строит красивый, информативный горизонтальный барчарт или scatter plot.
+   - использует `plt.tight_layout()`.
+5. plotly_code: чистый исполняемый Python-код:
+   - использует `df` и `px`.
+   - создает объект `fig = px.bar(...)` или `fig = px.scatter(...)`.
+
+Ответь СТРОГО в формате валидного JSON со следующей структурой:
+{
+  "summary_text": "...",
+  "key_findings": ["...", "..."],
+  "anomalies_detected": false,
+  "matplotlib_code": "...",
+  "plotly_code": "..."
+}
