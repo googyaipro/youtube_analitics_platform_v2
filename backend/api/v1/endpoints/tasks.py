@@ -37,7 +37,8 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
     if settings.TELEGRAM_ADMIN_CHAT_ID:
         allowed_tokens.add(str(settings.TELEGRAM_ADMIN_CHAT_ID).strip())
     if settings.TELEGRAM_ALLOWED_USERS:
-        for u in settings.TELEGRAM_ALLOWED_USERS.split(","):
+        import re
+        for u in re.split(r"[,;:\s]+", settings.TELEGRAM_ALLOWED_USERS):
             token = u.strip().lstrip("@").lower()
             if token:
                 allowed_tokens.add(token)
