@@ -254,7 +254,7 @@ fig.update_layout(yaxis={'autorange': 'reversed'})
         try:
             response = self._model.generate_content(
                 prompt,
-                generation_config={"temperature": 0.4, "max_output_tokens": 800}
+                generation_config={"temperature": 0.4, "max_output_tokens": 4096}
             )
             return response.text.strip()
         except Exception as e:
