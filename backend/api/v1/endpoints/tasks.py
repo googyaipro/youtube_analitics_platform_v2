@@ -175,7 +175,7 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
             target_query = clean_text
 
         bot.send_chat_action(chat_id, "typing")
-        bot.send_message(chat_id, "🔍 *Анализирую факторы успеха ролика через Gemini 3.5 Flash...*")
+        bot.send_message(chat_id, "🔍 *Анализирую факторы успеха ролика через Gemini 3.8 Flash...*")
 
         video = agent.bq.get_video_by_id_or_title(target_query)
         if not video:
@@ -206,7 +206,7 @@ def handle_telegram_update_internal(update: Dict[str, Any]):
             f"• 👁️ Просмотры: **{views:,}** (в **{score}x** выше нормы канала: {avg_views:,})\n"
             f"• ⚡ Скорость: **{vph} просм/час**\n"
             f"• 💬 Вовлеченность (ER): **{er:.2f}%** (👍 {video.get('like_count', 0):,} • 💬 {video.get('comment_count', 0):,})\n\n"
-            f"💡 **Вердикт AI (Gemini 3.5 Flash):**\n"
+            f"💡 **Вердикт AI (Gemini 3.8 Flash):**\n"
             f"{explanation.get('verdict')}\n\n"
             f"🪝 **Крючки темы и заголовка:**\n"
             f"{explanation.get('hook_analysis')}\n\n"

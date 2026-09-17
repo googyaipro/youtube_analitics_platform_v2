@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 from utils.api_client import APIClient
 
 st.set_page_config(page_title="AI-Аналитик (Gemini)", page_icon="💬", layout="wide")
-st.title("💬 AI-Аналитик YouTube (Gemini 3.5 Flash)")
+st.title("💬 AI-Аналитик YouTube (Gemini 3.8 Flash)")
 st.caption("Интеллектуальный анализ каналов, выявление аномалий и автоматическое построение интерактивных графиков.")
 
 client = APIClient()

@@ -22,7 +22,7 @@ class GeminiService:
     def __init__(self):
         settings = get_settings()
         self.project_id = settings.GCP_PROJECT_ID
-        self.region = settings.GCP_REGION
+        self.region = getattr(settings, "VERTEX_AI_REGION", None) or "us"
         self.model_name = settings.GEMINI_MODEL
         self._model = None
 
@@ -31,7 +31,7 @@ class GeminiService:
             from vertexai.generative_models import GenerativeModel
             vertexai.init(project=self.project_id, location=self.region)
             self._model = GenerativeModel(self.model_name)
-            logger.info("Vertex AI Gemini model initialized.")
+            logger.info(f"Vertex AI Gemini model '{self.model_name}' initialized in location '{self.region}'.")
         except Exception as e:
             logger.warning(f"Vertex AI Gemini initialization warning ({e}). Using rule-based fallback.")
 
@@ -62,6 +62,9 @@ class GeminiService:
                 generation_config={"temperature": 0.2, "response_mime_type": "application/json"}
             )
             raw_text = response.text.strip()
+            if raw_text.startswith("```"):
+                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+                raw_text = re.sub(r"\s*```$", "", raw_text)
             data = json.loads(raw_text)
             return AnalysisReport(**data)
         except Exception as e:
@@ -172,6 +175,9 @@ fig.update_layout(yaxis={'autorange': 'reversed'})
                 generation_config={"temperature": 0.2, "response_mime_type": "application/json"}
             )
             raw_text = response.text.strip()
+            if raw_text.startswith("```"):
+                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+                raw_text = re.sub(r"\s*```$", "", raw_text)
             return json.loads(raw_text)
         except Exception as e:
             logger.error(f"Error calling Gemini in explain_video_success ({e}), using fallback.")

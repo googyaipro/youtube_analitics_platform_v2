@@ -23,7 +23,7 @@ def get_analytics_kpis(bq: BigQueryService = Depends(get_bq_service)):
 
 @router.get("/{video_id}/explain", response_model=Dict[str, Any])
 def explain_video(video_id: str, bq: BigQueryService = Depends(get_bq_service)):
-    """Explain success drivers of a specific video using Gemini 3.5 Flash and BigQuery metrics."""
+    """Explain success drivers of a specific video using Gemini 3.8 Flash and BigQuery metrics."""
     video = bq.get_video_by_id_or_title(video_id)
     if not video:
         from fastapi import HTTPException

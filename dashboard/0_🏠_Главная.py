@@ -161,7 +161,7 @@ if videos:
 
     # Interactive AI Success Breakdown Section
     st.markdown("---")
-    st.subheader("🔍 AI-Разбор факторов успеха ролика (Gemini 3.5 Flash)")
+    st.subheader("🔍 AI-Разбор факторов успеха ролика (Gemini 3.8 Flash)")
     st.caption("Узнайте, почему конкретное видео выстрелило: анализ кликабельности заголовка, оседланных трендов и формулы успеха.")
 
     video_options = {
@@ -184,7 +184,7 @@ if videos:
     if analyze_clicked:
         vid_id = video_options.get(selected_video_label)
         if vid_id:
-            with st.spinner("Gemini 3.5 Flash анализирует математические метрики и семантику ролика..."):
+            with st.spinner("Gemini 3.8 Flash анализирует математические метрики и семантику ролика..."):
                 analysis_data = client.explain_video(vid_id)
 
             if "error" not in analysis_data:
@@ -235,11 +235,11 @@ with st.expander("📌 Архитектурный статус платформ�
     - **Горячий кэш**: Firestore Native Mode (TTL 24h, <50ms)
     - **DWH & Аналитика**: BigQuery Views (`v_latest_channel_stats`)
     - **Изолированная песочница**: `code-sandbox` (512MB RAM)
-    - **AI Core**: Vertex AI Gemini 3.5 Flash
+    - **AI Core**: Vertex AI Gemini 3.8 Flash
     
     👉 **Разделы в боковом меню:**
     - **🏠 Главная**: Сводные KPI, топ видеороликов и прямые ссылки на YouTube
     - **📈 Динамика**: Анализ трендов и лидерборды конкурентов
-    - **💬 AI-Аналитик**: Интеллектуальный диалог с Gemini 3.5 Flash
+    - **💬 AI-Аналитик**: Интеллектуальный диалог с Gemini 3.8 Flash
     - **⚙️ Управление каналами**: Добавление и удаление каналов, пользователи Telegram
     """)

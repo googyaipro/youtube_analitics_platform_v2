@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     BACKEND_PUBLIC_URL: str = "http://localhost:8000"
     
     # AI / Vertex AI
-    GEMINI_MODEL: str = "gemini-3.5-flash"
+    GEMINI_MODEL: str = "gemini-3.8-flash"
+    VERTEX_AI_REGION: str = "us"
     
     # Backend Server
     BACKEND_HOST: str = "0.0.0.0"
