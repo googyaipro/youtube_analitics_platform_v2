@@ -51,16 +51,16 @@ flowchart TD
         YT["YouTube Data API v3\n(Uploads Playlist UU...: 1 unit quota)"]
     end
 
-    TG <-->|HTTPS Webhook (Secret Token)| Hook
-    TaskWorker -->|sendPhoto / sendMessage| TG
-    Web <-->|REST API| SvcBackend
-    Cron -->|OIDC Auth POST| CronRoute
+    TG <-- "HTTPS Webhook [Secret Token]" --> Hook
+    TaskWorker -->|"sendPhoto / sendMessage"| TG
+    Web <-- "REST API" --> SvcBackend
+    Cron -->|"OIDC Auth POST"| CronRoute
     
-    Orchestrator <-->|Prompting & Structured Output| Vertex
-    Orchestrator <-->|Key-Value Hot Cache| FS
-    Orchestrator <-->|DWH Window SQL & Views| BQ
-    Orchestrator <-->|1 unit quota calls| YT
-    Orchestrator <-->|Safe Code Execution| SvcSandbox
+    Orchestrator <-- "Prompting & Structured Output" --> Vertex
+    Orchestrator <-- "Key-Value Hot Cache" --> FS
+    Orchestrator <-- "DWH Window SQL & Views" --> BQ
+    Orchestrator <-- "1 unit quota calls" --> YT
+    Orchestrator <-- "Safe Code Execution" --> SvcSandbox
 ```
 
 ---
