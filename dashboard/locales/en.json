@@ -91,5 +91,9 @@
   "admin_stats_channels": "Total Channels",
   "admin_block_btn": "Block User",
   "admin_unblock_btn": "Unblock User",
-  "admin_delete_btn": "Delete User"
+  "admin_delete_btn": "Delete User",
+  "ai_welcome_message": "Hello! I am your YouTube AI Analyst. Ask me anything about your competitors and viral trends in this channel set!\n\nFor example:\n- *Which video formats are currently exhibiting highest velocity?*\n- *Analyze titles and hooks of viral leaders.*\n- *What content topics should I produce based on competitor gaps?*",
+  "ai_gemini_key_required": "⚠️ Gemini API Key is required for interactive AI Analyst. Configure it in Profile & API Keys.",
+  "ai_analyzing_spinner": "Analyzing with Gemini AI...",
+  "ai_key_takeaways": "📌 Key Takeaways:"
 }

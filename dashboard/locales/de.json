@@ -91,5 +91,9 @@
   "admin_stats_channels": "Kanäle",
   "admin_block_btn": "Sperren",
   "admin_unblock_btn": "Entsperren",
-  "admin_delete_btn": "Löschen"
+  "admin_delete_btn": "Löschen",
+  "ai_welcome_message": "Hallo! Ich bin Ihr YouTube-KI-Analyst. Fragen Sie mich alles über Ihre Konkurrenten und virale Trends in diesem Kanal-Set!\n\nZum Beispiel:\n- *Welche Videoformate weisen derzeit die höchste Zuwachsrate auf?*\n- *Analysiere Titel und Hooks der viralen Spitzenreiter.*\n- *Welche Themen sollte ich basierend auf Lücken der Konkurrenz produzieren?*",
+  "ai_gemini_key_required": "⚠️ Für den interaktiven KI-Analysten ist ein Gemini-API-Schlüssel erforderlich. Konfigurieren Sie ihn unter Profil & API.",
+  "ai_analyzing_spinner": "Analysiere mit Gemini KI...",
+  "ai_key_takeaways": "📌 Wichtigste Erkenntnisse:"
 }

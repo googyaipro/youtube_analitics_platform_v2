@@ -91,5 +91,9 @@
   "admin_stats_channels": "Kanavia",
   "admin_block_btn": "Estä käyttäjä",
   "admin_unblock_btn": "Poista esto",
-  "admin_delete_btn": "Poista käyttäjä"
+  "admin_delete_btn": "Poista käyttäjä",
+  "ai_welcome_message": "Hei! Olen YouTube-tekoälyanalyytikkosi. Kysy minulta mitä vain kilpailijoistasi ja viraaleista trendeistä tässä kanavaryhmässä!\n\nEsimerkiksi:\n- *Mitkä videoformaatit kasvavat tällä hetkellä nopeimmin?*\n- *Analysoi viraalien hittivideoiden otsikot ja koukut.*\n- *Mitä sisältöaiheita minun kannattaisi tuottaa kilpailijoiden puutteiden perusteella?*",
+  "ai_gemini_key_required": "⚠️ Interaktiivinen tekoälyanalyytikko vaatii Gemini API -avaimen. Määritä se Profiili ja API -sivulla.",
+  "ai_analyzing_spinner": "Analysoidaan Gemini-tekoälyllä...",
+  "ai_key_takeaways": "📌 Keskeiset huomiot:"
 }

@@ -26,18 +26,24 @@ st.title(f"💬 {t('ai_analyst_title')}")
 st.caption(f"{t('ai_analyst_subtitle')} (Gemini 3.8 Flash / Google AI Studio)")
 
 if not user.get("gemini_api_key_valid"):
-    st.warning("⚠️ Gemini API Key is required for interactive AI Analyst. Configure it in Profile & API Keys.")
+    st.warning(t("ai_gemini_key_required"))
 
 # Chat history per active set
 history_key = f"chat_history_{active_set_id}"
 if history_key not in st.session_state:
-    st.session_state[history_key] = [
-        {
-            "role": "assistant",
-            "content": "Hello! I am your YouTube AI Analyst. Ask me anything about your competitors and viral trends in this channel set!\n\nFor example:\n- *Which video formats are currently exhibiting highest velocity?*\n- *Analyze titles and hooks of viral leaders.*\n- *What content topics should I produce based on competitor gaps?*",
-            "chart": None
-        }
-    ]
+    st.session_state[history_key] = []
+elif (
+    len(st.session_state[history_key]) == 1
+    and st.session_state[history_key][0].get("role") == "assistant"
+    and ("Hello! I am your YouTube AI Analyst" in st.session_state[history_key][0].get("content", "")
+         or "Привет! Я ваш YouTube AI-Аналитик" in st.session_state[history_key][0].get("content", ""))
+):
+    # Reset legacy static greeting so it dynamically follows current language
+    st.session_state[history_key] = []
+
+# Display greeting dynamically in active interface language
+with st.chat_message("assistant"):
+    st.markdown(t("ai_welcome_message"))
 
 # Display history
 for msg in st.session_state[history_key]:
@@ -59,12 +65,13 @@ if user_query:
         st.markdown(user_query)
 
     with st.chat_message("assistant"):
-        with st.spinner("Analyzing with Gemini AI..."):
+        with st.spinner(t("ai_analyzing_spinner")):
             try:
+                active_lang = st.session_state.get("language", user.get("language", "en"))
                 response = client.ask_ai_analyst(
                     query=user_query,
                     set_id=active_set_id,
-                    target_language=user.get("language", "en")
+                    target_language=active_lang
                 )
                 answer = response.get("answer", "")
                 findings = response.get("key_findings", [])
@@ -73,7 +80,7 @@ if user_query:
                 findings_text = "\n".join([f"• {f}" for f in findings]) if findings else ""
                 full_text = answer
                 if findings_text:
-                    full_text += f"\n\n**📌 Key Takeaways:**\n{findings_text}"
+                    full_text += f"\n\n**{t('ai_key_takeaways')}**\n{findings_text}"
 
                 st.markdown(full_text)
                 if plotly_spec:
@@ -92,3 +99,4 @@ if user_query:
                 err = f"Error: {e}"
                 st.error(err)
                 st.session_state[history_key].append({"role": "assistant", "content": err, "chart": None})
+
