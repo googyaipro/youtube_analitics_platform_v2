@@ -7,9 +7,14 @@ if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
 import streamlit as st
-from dashboard.utils.api_client import get_api_client
-from dashboard.utils.auth_ui import require_auth
-from dashboard.utils.i18n import t, SUPPORTED_LANGUAGES, set_language
+try:
+    from dashboard.utils.api_client import get_api_client
+    from dashboard.utils.auth_ui import require_auth
+    from dashboard.utils.i18n import t, SUPPORTED_LANGUAGES, set_language
+except ModuleNotFoundError:
+    from utils.api_client import get_api_client
+    from utils.auth_ui import require_auth
+    from utils.i18n import t, SUPPORTED_LANGUAGES, set_language
 
 st.set_page_config(page_title="Профиль и API ключи", page_icon="🔑", layout="wide")
 

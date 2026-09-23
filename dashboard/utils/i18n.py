@@ -90,7 +90,10 @@ def render_language_selector(sidebar: bool = True):
         # Attempt to sync with backend if user is logged in
         if st.session_state.get("access_token"):
             try:
-                from dashboard.utils.api_client import get_api_client
+                try:
+                    from dashboard.utils.api_client import get_api_client
+                except ModuleNotFoundError:
+                    from utils.api_client import get_api_client
                 client = get_api_client()
                 client.update_user_language(selected_lang)
             except Exception:

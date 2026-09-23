@@ -1,7 +1,11 @@
 from typing import Optional
 import streamlit as st
-from dashboard.utils.api_client import get_api_client
-from dashboard.utils.i18n import t, get_current_language, set_language, render_language_selector
+try:
+    from dashboard.utils.api_client import get_api_client
+    from dashboard.utils.i18n import t, get_current_language, set_language, render_language_selector
+except ModuleNotFoundError:
+    from utils.api_client import get_api_client
+    from utils.i18n import t, get_current_language, set_language, render_language_selector
 
 
 def render_auth_modal():
