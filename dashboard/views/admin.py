@@ -66,7 +66,7 @@ if not user.get("is_admin"):
 # --- Admin Authorized Dashboard ---
 col_head, col_refresh = st.columns([4, 1])
 with col_refresh:
-    if st.button("🔄 Refresh Data", use_container_width=True):
+    if st.button(f"🔄 {t('btn_refresh')}", use_container_width=True):
         st.rerun()
 
 # 1. Statistics KPIs

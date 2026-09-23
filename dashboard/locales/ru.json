@@ -110,5 +110,12 @@
   "scheduled_dispatch_label": "Отправка по расписанию",
   "set_active_btn": "Сделать активным",
   "delete_set_btn": "🗑️ Удалить набор",
-  "enter_set_name_error": "Пожалуйста, введите название набора."
+  "enter_set_name_error": "Пожалуйста, введите название набора.",
+  "btn_ai_digest": "AI-Дайджест",
+  "btn_refresh": "Обновить",
+  "spinner_gen_digest": "Генерирую executive AI-дайджест ниши...",
+  "expander_executive_digest": "Executive AI-Дайджест ниши",
+  "btn_hide_digest": "✕ Скрыть дайджест",
+  "confirm_delete_btn": "Подтвердить удаление",
+  "delete_channel_btn": "Удалить канал"
 }

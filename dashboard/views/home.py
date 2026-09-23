@@ -108,22 +108,22 @@ with col_btn:
                     except Exception as e:
                         st.error(f"Sync error: {e}")
     with col_r2:
-        if st.button("📢 AI-Дайджест", use_container_width=True):
+        if st.button(f"📢 {t('btn_ai_digest')}", use_container_width=True):
             if selected_set_id:
-                with st.spinner("Генерирую executive AI-дайджест ниши..."):
+                with st.spinner(t("spinner_gen_digest")):
                     try:
                         d_res = client.get_channel_set_digest(selected_set_id)
                         st.session_state["active_digest"] = d_res.get("digest")
                     except Exception as e:
                         st.error(f"Digest error: {e}")
     with col_r3:
-        if st.button("Refresh", use_container_width=True):
+        if st.button(f"🔄 {t('btn_refresh')}", use_container_width=True):
             st.rerun()
 
 if "active_digest" in st.session_state and st.session_state["active_digest"]:
-    with st.expander("📢 **Executive AI-Дайджест ниши**", expanded=True):
+    with st.expander(f"📢 **{t('expander_executive_digest')}**", expanded=True):
         st.markdown(st.session_state["active_digest"])
-        if st.button("✕ Скрыть дайджест", key="close_digest"):
+        if st.button(t("btn_hide_digest"), key="close_digest"):
             del st.session_state["active_digest"]
             st.rerun()
 
@@ -210,8 +210,8 @@ else:
                 st.markdown(f"##### {t('explain_ai_btn')}")
                 explain_key = f"explain_{v['video_id']}"
                 
-                if st.button(f"🔍 Gemini Analysis", key=f"btn_{explain_key}"):
-                    with st.spinner("Analyzing with Gemini 3.8 Flash..."):
+                if st.button(f"🔍 {t('explain_ai_btn')}", key=f"btn_{explain_key}"):
+                    with st.spinner(t("ai_analyzing_spinner")):
                         try:
                             res = client.explain_video(v["video_id"], set_id=selected_set_id)
                             st.session_state[explain_key] = res.get("explanation", {})

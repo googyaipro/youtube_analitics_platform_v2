@@ -110,5 +110,12 @@
   "scheduled_dispatch_label": "დაგეგმილი გაგზავნა",
   "set_active_btn": "აქტიურად მონიშვნა",
   "delete_set_btn": "🗑️ ნაკრების წაშლა",
-  "enter_set_name_error": "გთხოვთ შეიყვანოთ ნაკრების სახელი."
+  "enter_set_name_error": "გთხოვთ შეიყვანოთ ნაკრების სახელი.",
+  "btn_ai_digest": "AI-დაიჯესტი",
+  "btn_refresh": "განახლება",
+  "spinner_gen_digest": "იქმნება executive AI-დაიჯესტი...",
+  "expander_executive_digest": "Executive AI-დაიჯესტი",
+  "btn_hide_digest": "✕ დაიჯესტის დამალვა",
+  "confirm_delete_btn": "წაშლის დადასტურება",
+  "delete_channel_btn": "არხის წაშლა"
 }

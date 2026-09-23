@@ -110,5 +110,12 @@
   "scheduled_dispatch_label": "Scheduled Dispatch",
   "set_active_btn": "Set Active",
   "delete_set_btn": "🗑️ Delete Set",
-  "enter_set_name_error": "Please enter a set name."
+  "enter_set_name_error": "Please enter a set name.",
+  "btn_ai_digest": "AI Digest",
+  "btn_refresh": "Refresh",
+  "spinner_gen_digest": "Generating executive niche AI digest...",
+  "expander_executive_digest": "Executive Niche AI Digest",
+  "btn_hide_digest": "✕ Hide Digest",
+  "confirm_delete_btn": "Confirm Delete",
+  "delete_channel_btn": "Delete Channel"
 }

@@ -110,5 +110,12 @@
   "scheduled_dispatch_label": "Geplanter Versand",
   "set_active_btn": "Als aktiv setzen",
   "delete_set_btn": "🗑️ Set löschen",
-  "enter_set_name_error": "Bitte geben Sie einen Namen für das Set ein."
+  "enter_set_name_error": "Bitte geben Sie einen Namen für das Set ein.",
+  "btn_ai_digest": "KI-Digest",
+  "btn_refresh": "Aktualisieren",
+  "spinner_gen_digest": "Generiere Executive-KI-Digest der Nische...",
+  "expander_executive_digest": "Executive-KI-Digest der Nische",
+  "btn_hide_digest": "✕ Digest ausblenden",
+  "confirm_delete_btn": "Löschen bestätigen",
+  "delete_channel_btn": "Kanal löschen"
 }

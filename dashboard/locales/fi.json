@@ -110,5 +110,12 @@
   "scheduled_dispatch_label": "Ajastettu lähetys",
   "set_active_btn": "Aseta aktiiviseksi",
   "delete_set_btn": "🗑️ Poista ryhmä",
-  "enter_set_name_error": "Anna ryhmälle nimi."
+  "enter_set_name_error": "Anna ryhmälle nimi.",
+  "btn_ai_digest": "AI-kooste",
+  "btn_refresh": "Päivitä",
+  "spinner_gen_digest": "Luodaan tekoälykoostetta...",
+  "expander_executive_digest": "Katsauksen AI-kooste",
+  "btn_hide_digest": "✕ Piilota kooste",
+  "confirm_delete_btn": "Vahvista poisto",
+  "delete_channel_btn": "Poista kanava"
 }
