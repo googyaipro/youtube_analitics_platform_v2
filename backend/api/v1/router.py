@@ -1,27 +1,29 @@
 from fastapi import APIRouter
 from backend.api.v1.endpoints import (
-    analyze,
+    auth,
+    user,
+    channel_sets,
     channels,
-    competitors,
-    cron,
-    ingestion,
-    tasks,
-    telegram,
     videos,
+    analyze,
+    cron,
+    telegram,
 )
 
 api_router = APIRouter()
 
-# Webhook & Tasks
-api_router.include_router(telegram.router)
-api_router.include_router(tasks.router)
+# Multi-tenant Auth & User settings
+api_router.include_router(auth.router)
+api_router.include_router(user.router)
 
-# Analytics & AI
-api_router.include_router(analyze.router)
-api_router.include_router(competitors.router)
-api_router.include_router(cron.router)
+# Workspaces / Channel Sets
+api_router.include_router(channel_sets.router)
 
-# Data Resources
+# Data Resources & Analytics
 api_router.include_router(channels.router)
 api_router.include_router(videos.router)
-api_router.include_router(ingestion.router)
+api_router.include_router(analyze.router)
+
+# Automation & Integrations
+api_router.include_router(cron.router)
+api_router.include_router(telegram.router)

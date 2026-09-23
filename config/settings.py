@@ -8,40 +8,36 @@ class Settings(BaseSettings):
     APP_NAME: str = "YouTube Analytics Platform"
     DEBUG: bool = False
     
-    # YouTube Data API
-    YOUTUBE_API_KEY: Optional[str] = None
+    # Domains & Routing (Dokploy Traefik)
+    DASHBOARD_URL: str = "https://yap.oxyjet.win"
+    BACKEND_PUBLIC_URL: str = "https://api.yap.oxyjet.win"
+    DOKPLOY_WEB_DOMAIN: str = "yap.oxyjet.win"
+    DOKPLOY_API_DOMAIN: str = "api.yap.oxyjet.win"
+    BACKEND_API_URL: str = "http://backend:8080/api/v1"
+    SANDBOX_SERVICE_URL: str = "http://sandbox:8080"
+    
+    # Database (PostgreSQL with SQLite fallback)
+    DATABASE_URL: str = "postgresql://postgres:postgres@postgres:5432/youtube_analytics"
+    
+    # Security & Auth
+    JWT_SECRET: str = "super-secret-jwt-key-change-in-production-1234567890"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    ENCRYPTION_SECRET: str = "8vX_8uM_6eN_4rT_2wQ_0zY_9xW_7vU_5sR_3qP_1oN="
     
     # Telegram Bot
-    TELEGRAM_BOT_TOKEN: Optional[str] = None
-    TELEGRAM_WEBHOOK_SECRET: Optional[str] = "secret-tg-token-xyz"
-    TELEGRAM_ADMIN_CHAT_ID: Optional[str] = None
-    TELEGRAM_ALLOWED_USERS: str = ""  # Comma-separated chat_ids or usernames
+    TELEGRAM_BOT_TOKEN: Optional[str] = "8824791628:AAGcvPcC3lCZ3SziCO4fpqVoOhYjEdoudh8"
+    TELEGRAM_WEBHOOK_SECRET: Optional[str] = "216e54ccb062bce4dbe9cc9e2eced4d2"
     
-    # Google Cloud Platform
-    GCP_PROJECT_ID: str = "gen-lang-client-0428255657"
-    GCP_LOCATION: str = "US"
-    GCP_REGION: str = "us-central1"
-    BIGQUERY_DATASET_ID: str = "youtube_analytics"
-    GCS_BUCKET_NAME: str = "gen-lang-client-0428255657-yt-raw-data"
-    CLOUD_TASKS_QUEUE: str = "telegram-tasks"
+    # Default Language (ru, en, de, fi, ka)
+    DEFAULT_LANGUAGE: str = "ru"
     
-    # Microservices URLs
-    SANDBOX_SERVICE_URL: str = "http://localhost:8080"
-    BACKEND_PUBLIC_URL: str = "http://localhost:8000"
-    
-    # AI / Vertex AI
-    GEMINI_MODEL: str = "gemini-3.8-flash"
-    VERTEX_AI_REGION: str = "us"
-    
-    # Backend Server
+    # Server Host & Port
     BACKEND_HOST: str = "0.0.0.0"
-    BACKEND_PORT: int = 8000
-    API_V1_PREFIX: str = "/api"
+    BACKEND_PORT: int = 8080
+    API_V1_PREFIX: str = "/api/v1"
     CORS_ORIGINS: List[str] = ["*"]
-    
-    # Dashboard config
-    BACKEND_API_URL: str = "http://localhost:8000/api"
-    STREAMLIT_SERVER_PORT: int = 8501
+    STREAMLIT_SERVER_PORT: int = 8080
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: yap_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-yap_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yap_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-youtube_analytics}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-yap_user} -d ${POSTGRES_DB:-youtube_analytics}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - yap_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yap_backend
+    restart: always
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgresql://${POSTGRES_USER:-yap_user}:${POSTGRES_PASSWORD:-yap_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-youtube_analytics}
+      SECRET_KEY: ${SECRET_KEY:-c92739f75470d02bce0eb8e652fb6a256a5dbd4e8b35bc2b489d813cbefd6f0b}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-X9s65f-4v-T7t2Zg3B7qjV6G4j0kE9h1pL5y2rA4uB8=}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      DOKPLOY_WEB_DOMAIN: ${DOKPLOY_WEB_DOMAIN:-yap.oxyjet.win}
+      DOKPLOY_API_DOMAIN: ${DOKPLOY_API_DOMAIN:-api.yap.oxyjet.win}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - yap_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.yap-backend.rule=Host(`api.yap.oxyjet.win`)"
+      - "traefik.http.routers.yap-backend.entrypoints=websecure"
+      - "traefik.http.routers.yap-backend.tls=true"
+      - "traefik.http.routers.yap-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.yap-backend.loadbalancer.server.port=8080"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: yap_dashboard
+    restart: always
+    environment:
+      PORT: 8080
+      BACKEND_API_URL: http://backend:8080/api/v1
+      DOKPLOY_WEB_DOMAIN: ${DOKPLOY_WEB_DOMAIN:-yap.oxyjet.win}
+      DOKPLOY_API_DOMAIN: ${DOKPLOY_API_DOMAIN:-api.yap.oxyjet.win}
+    depends_on:
+      - backend
+    networks:
+      - yap_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.yap-dashboard.rule=Host(`yap.oxyjet.win`)"
+      - "traefik.http.routers.yap-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.yap-dashboard.tls=true"
+      - "traefik.http.routers.yap-dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.services.yap-dashboard.loadbalancer.server.port=8080"
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  yap_network:
+    driver: bridge

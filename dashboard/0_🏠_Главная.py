@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from utils.api_client import APIClient
+from dashboard.utils.api_client import get_api_client
+from dashboard.utils.auth_ui import require_auth
+from dashboard.utils.i18n import t
 
 st.set_page_config(
     page_title="YouTube Analytics Platform",
@@ -10,236 +12,182 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-client = APIClient()
+# Enforce authentication
+user = require_auth()
+client = get_api_client()
 
-# Header
-col_head, col_btn = st.columns([4, 1])
+# --- Sidebar: Channel Set Selector ---
+with st.sidebar:
+    st.markdown(f"### 📁 {t('active_set')}")
+    channel_sets = client.get_channel_sets()
+
+    if not channel_sets:
+        st.warning(t("no_channels"))
+        # Auto-create first set if empty
+        try:
+            created = client.create_channel_set({
+                "name": "Основной",
+                "description": "Основной набор отслеживаемых каналов"
+            })
+            channel_sets = [created]
+        except Exception:
+            channel_sets = []
+
+    set_options = {s["name"]: s["id"] for s in channel_sets}
+    active_set_id = user.get("active_set_id")
+    
+    current_idx = 0
+    if active_set_id:
+        for idx, (name, s_id) in enumerate(set_options.items()):
+            if s_id == active_set_id:
+                current_idx = idx
+                break
+
+    if set_options:
+        selected_set_name = st.selectbox(
+            t("select_set"),
+            options=list(set_options.keys()),
+            index=current_idx,
+            key="active_set_select"
+        )
+        selected_set_id = set_options.get(selected_set_name)
+        if selected_set_id and selected_set_id != active_set_id:
+            try:
+                client.activate_channel_set(selected_set_id)
+                user["active_set_id"] = selected_set_id
+                st.session_state["user"] = user
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to switch set: {e}")
+    else:
+        selected_set_id = None
+
+    # Check API keys warning
+    if not user.get("youtube_api_key_valid"):
+        st.warning("⚠️ YouTube API Key не настроен. Перейдите в **«🔑 Профиль и API»**.")
+    if not user.get("gemini_api_key_valid"):
+        st.info("💡 Gemini API Key не настроен. Добавьте его для работы AI-анализа.")
+
+    st.markdown("---")
+
+
+# --- Main Dashboard Header ---
+col_head, col_btn = st.columns([3, 1])
 with col_head:
-    st.title("🎬 YouTube Analytics Platform")
-    st.caption("Serverless-платформа аналитики каналов на базе Google Cloud (Cloud Run, BigQuery, Firestore, Vertex AI)")
+    st.title(f"🎬 {t('app_title')}")
+    st.caption(f"{t('app_tagline')} | {t('active_set')}: **{selected_set_name if set_options else 'None'}**")
+
 with col_btn:
     st.write("")
-    if st.button("🔄 Обновить данные", use_container_width=True):
-        st.rerun()
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+        if st.button(f"🔄 {t('sync_now')}", use_container_width=True):
+            if selected_set_id:
+                with st.spinner(t("syncing")):
+                    try:
+                        res = client.sync_channel_set(selected_set_id)
+                        st.success(f"{t('sync_success')} ({res.get('snapshots_saved', 0)} видео)")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Sync error: {e}")
+    with col_r2:
+        if st.button("Обновить UI", use_container_width=True):
+            st.rerun()
 
-# Fetch KPIs
-kpis = client.get_kpis()
+# --- Section 1: KPI Cards ---
+kpis = client.get_kpis(set_id=selected_set_id)
 
-col1, col2, col3, col4 = st.columns(4)
-
-if "error" not in kpis:
-    col1.metric("Отслеживаемых каналов", kpis.get("total_channels", 0))
-    col2.metric("Суммарно просмотров", f"{kpis.get('total_views', 0):,}")
-    col3.metric("Общее число подписчиков", f"{kpis.get('total_subscribers', 0):,}")
-    col4.metric("Средний ER (вовлеченность)", f"{kpis.get('engagement_rate_pct', 0.0)}%")
-else:
-    st.warning("⚠️ Не удалось подключиться к FastAPI бэкенду. Убедитесь, что бэкенд запущен.")
+col1, col2, col3, col4, col5 = st.columns(5)
+col1.metric(t("kpi_channels"), kpis.get("total_channels", 0))
+col2.metric(t("kpi_videos"), kpis.get("total_videos", 0))
+col3.metric(t("kpi_views"), f"{kpis.get('total_views', 0):,}")
+col4.metric(t("kpi_avg_views"), f"{kpis.get('avg_views_per_video', 0):,}")
+col5.metric(t("kpi_viral_hits"), kpis.get("viral_hits_count", 0))
 
 st.markdown("---")
 
-# Section: Top Videos by Views
-st.subheader("🔥 Топ роликов по просмотрам")
+# --- Section 2: Top Videos & Virality Breakdown ---
+st.subheader(f"🔥 {t('top_videos')}")
 
-# Channel filter & Limit selection
-channels = client.get_channels()
+# Filter by channel inside this set
+channels = client.get_channels(set_id=selected_set_id)
 channel_options = {"Все каналы": None}
-if channels and not isinstance(channels, dict):
-    for c in channels:
-        label = c.get("title") or c.get("custom_url") or c.get("channel_id")
-        if c.get("custom_url"):
-            label = f"{c.get('title')} ({c.get('custom_url')})"
-        channel_options[label] = c.get("channel_id")
+for c in channels:
+    label = c.get("title") or c.get("custom_url") or c.get("channel_id")
+    channel_options[label] = c.get("channel_id")
 
 col_filter, col_limit = st.columns([3, 1])
 with col_filter:
-    selected_channel_label = st.selectbox(
-        "Фильтр по каналу:",
-        options=list(channel_options.keys()),
-        index=0,
-        help="Выберите конкретный канал или просматривайте общий рейтинг по всем конкурентам"
-    )
+    selected_ch_label = st.selectbox("Фильтр по каналу:", options=list(channel_options.keys()))
 with col_limit:
-    selected_limit = st.selectbox(
-        "Количество роликов:",
-        options=[10, 20, 30, 50],
-        index=1,
-        help="Максимальное число видео в выборке"
-    )
+    selected_limit = st.selectbox("Показать видео:", options=[10, 20, 50, 100], index=1)
 
-selected_channel_id = channel_options.get(selected_channel_label)
-videos = client.get_videos(channel_id=selected_channel_id, limit=selected_limit)
+selected_channel_id = channel_options.get(selected_ch_label)
+videos = client.get_videos(set_id=selected_set_id, channel_id=selected_channel_id, limit=selected_limit)
 
-if videos:
-    df_videos = pd.DataFrame(videos)
-    # Generate direct YouTube link
-    df_videos["youtube_url"] = "https://www.youtube.com/watch?v=" + df_videos["video_id"].astype(str)
-    if "channel_title" not in df_videos.columns or df_videos["channel_title"].isnull().all():
-        df_videos["channel_title"] = selected_channel_label if selected_channel_id else "YouTube Канал"
-    df_videos["channel_title"] = df_videos["channel_title"].fillna("YouTube Канал")
-
-    df_videos["short_title"] = df_videos["title"].apply(lambda t: t[:45] + "..." if len(str(t)) > 45 else str(t))
-
-    chart_col, preview_col = st.columns([3, 2])
-
-    with chart_col:
-        chart_n = min(10, len(df_videos))
-        chart_title = f"Топ-{chart_n} видео ({selected_channel_label})" if selected_channel_id else f"Топ-{chart_n} видео (с разбивкой по каналам)"
-        # Plotly horizontal bar chart colored by channel
-        fig = px.bar(
-            df_videos.head(chart_n),
-            x="view_count",
-            y="short_title",
-            orientation="h",
-            color="channel_title",
-            labels={
-                "view_count": "Количество просмотров",
-                "short_title": "Видео",
-                "channel_title": "Канал"
-            },
-            hover_name="title",
-            hover_data={
-                "view_count": ":,",
-                "like_count": ":,",
-                "channel_title": True,
-                "short_title": False
-            },
-            title=chart_title
-        )
-        fig.update_layout(
-            yaxis={"autorange": "reversed"},
-            height=430,
-            margin=dict(l=10, r=10, t=40, b=10),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    with preview_col:
-        st.markdown("##### 🏆 Лидеры просмотров")
-        top_3 = df_videos.head(3)
-        for _, v in top_3.iterrows():
-            with st.container(border=True):
-                card_img, card_info = st.columns([1, 2])
-                with card_img:
-                    thumb = v.get("thumbnail_url")
-                    if thumb:
-                        st.image(thumb, use_container_width=True)
-                with card_info:
-                    st.markdown(f"**[{v['title']}]({v['youtube_url']})**")
-                    st.caption(f"📺 Канал: **{v.get('channel_title', 'Не указан')}**")
-                    st.markdown(f"👁️ **{v['view_count']:,}** просмотров • 👍 **{v.get('like_count', 0):,}**")
-                    badges = v.get("badges") or []
-                    if badges:
-                        st.caption(" ".join([f"`{b}`" for b in badges]))
-                    st.link_button("▶️ Открыть на YouTube", v["youtube_url"], use_container_width=True)
-
-    # Detailed Table with Direct Links, Metrics and Thumbnails
-    st.markdown("#### 📋 Детальная таблица роликов и факторы виральности")
-    display_cols = [
-        "thumbnail_url", "title", "channel_title", "view_count",
-        "outlier_score", "velocity_vph", "engagement_rate_pct",
-        "like_count", "published_at", "youtube_url"
-    ]
-    existing_cols = [c for c in display_cols if c in df_videos.columns]
-
-    st.dataframe(
-        df_videos[existing_cols],
-        column_config={
-            "thumbnail_url": st.column_config.ImageColumn("Обложка", width="small"),
-            "title": st.column_config.TextColumn("Название видео", width="large"),
-            "channel_title": st.column_config.TextColumn("Канал", width="medium"),
-            "view_count": st.column_config.NumberColumn("Просмотры", format="%d"),
-            "outlier_score": st.column_config.NumberColumn("Хайп-фактор", format="%.2fx", help="Отношение просмотров к средней норме автора"),
-            "velocity_vph": st.column_config.NumberColumn("Темп (просм/ч)", format="%.1f", help="Скорость набора просмотров в час"),
-            "engagement_rate_pct": st.column_config.NumberColumn("ER (%)", format="%.2f%%", help="Вовлеченность: (Лайки + Комменты) / Просмотры"),
-            "like_count": st.column_config.NumberColumn("Лайки", format="%d"),
-            "published_at": st.column_config.DatetimeColumn("Дата публикации", format="DD.MM.YYYY HH:mm"),
-            "youtube_url": st.column_config.LinkColumn("YouTube", display_text="▶️ Смотреть"),
-        },
-        hide_index=True,
-        use_container_width=True
-    )
-
-    # Interactive AI Success Breakdown Section
-    st.markdown("---")
-    st.subheader("🔍 AI-Разбор факторов успеха ролика (Gemini 3.8 Flash)")
-    st.caption("Узнайте, почему конкретное видео выстрелило: анализ кликабельности заголовка, оседланных трендов и формулы успеха.")
-
-    video_options = {
-        f"#{i+1} [{row.get('channel_title', 'Канал')}] {row.get('title')} ({row.get('view_count', 0):,} просм.)": row.get("video_id")
-        for i, row in df_videos.iterrows()
-    }
-
-    sel_col, btn_col = st.columns([3, 1])
-    with sel_col:
-        selected_video_label = st.selectbox(
-            "Выберите видео для детального факторного анализа:",
-            options=list(video_options.keys()),
-            index=0
-        )
-    with btn_col:
-        st.write("")
-        st.write("")
-        analyze_clicked = st.button("🧠 Провести AI-разбор", use_container_width=True, type="primary")
-
-    if analyze_clicked:
-        vid_id = video_options.get(selected_video_label)
-        if vid_id:
-            with st.spinner("Gemini 3.8 Flash анализирует математические метрики и семантику ролика..."):
-                analysis_data = client.explain_video(vid_id)
-
-            if "error" not in analysis_data:
-                metrics = analysis_data.get("metrics", {})
-                expl = analysis_data.get("explanation", {})
-
-                with st.container(border=True):
-                    st.markdown(f"### 🎬 {analysis_data.get('title')}")
-                    st.caption(f"📺 Канал: **{analysis_data.get('channel_title')}**")
-
-                    # Badges / Metrics row
-                    m1, m2, m3, m4 = st.columns(4)
-                    m1.metric("Просмотры", f"{metrics.get('view_count', 0):,}", f"{metrics.get('outlier_score', 1.0)}x от нормы")
-                    m2.metric("Темп набора", f"{metrics.get('velocity_vph', 0):.1f} просм/ч")
-                    m3.metric("Вовлеченность (ER)", f"{metrics.get('engagement_rate_pct', 0):.2f}%")
-                    m4.metric("Среднее канала", f"{int(metrics.get('channel_avg_views', 0)):,} просм.")
-
-                    st.markdown("---")
-
-                    c_left, c_right = st.columns(2)
-                    with c_left:
-                        st.markdown("#### 💡 Вердикт успеха")
-                        st.info(expl.get("verdict", "Анализ завершен."))
-
-                        st.markdown("#### 🪝 Разбор крючков заголовка")
-                        st.write(expl.get("hook_analysis", "Заголовок эффективно привлекает целевую аудиторию."))
-
-                    with c_right:
-                        st.markdown("#### 🔥 Оседланный тренд / Инфоповод")
-                        st.write(expl.get("trend_alignment", "Тема ролика совпадает с активными обсуждениями в нише."))
-
-                        st.markdown("#### 🛠️ Как повторить этот успех (Takeaway)")
-                        st.success(expl.get("actionable_takeaway", "Используйте связку трендовых инструментов в заголовке."))
-            else:
-                st.error(f"Не удалось получить анализ: {analysis_data.get('error')}")
+if not videos:
+    st.info(t("no_channels"))
 else:
-    if selected_channel_id:
-        st.info(f"Нет данных о видео для канала **{selected_channel_label}**.")
-    else:
-        st.info("Нет данных о видео. Перейдите во вкладку '⚙️ Управление каналами' для синхронизации.")
+    df = pd.DataFrame(videos)
+    df["youtube_link"] = "https://www.youtube.com/watch?v=" + df["video_id"].astype(str)
+    df["badges_str"] = df["badges"].apply(lambda b: " ".join(b) if isinstance(b, list) else "")
 
-st.markdown("---")
-
-# Architectural overview in an expander
-with st.expander("📌 Архитектурный статус платформы (Google Cloud)", expanded=False):
-    st.markdown("""
-    - **Очереди задач**: Google Cloud Tasks (`telegram-tasks`)
-    - **Горячий кэш**: Firestore Native Mode (TTL 24h, <50ms)
-    - **DWH & Аналитика**: BigQuery Views (`v_latest_channel_stats`)
-    - **Изолированная песочница**: `code-sandbox` (512MB RAM)
-    - **AI Core**: Vertex AI Gemini 3.8 Flash
+    # Top Video Chart (Horizontal Bar)
+    top_chart_data = df.head(10).copy()
+    top_chart_data["short_title"] = top_chart_data["title"].apply(lambda x: x[:35] + "..." if len(str(x)) > 35 else str(x))
     
-    👉 **Разделы в боковом меню:**
-    - **🏠 Главная**: Сводные KPI, топ видеороликов и прямые ссылки на YouTube
-    - **📈 Динамика**: Анализ трендов и лидерборды конкурентов
-    - **💬 AI-Аналитик**: Интеллектуальный диалог с Gemini 3.8 Flash
-    - **⚙️ Управление каналами**: Добавление и удаление каналов, пользователи Telegram
-    """)
+    fig = px.bar(
+        top_chart_data,
+        x="view_count",
+        y="short_title",
+        orientation="h",
+        color="outlier_score",
+        color_continuous_scale="Blues",
+        labels={"view_count": t("views"), "short_title": t("video_title"), "outlier_score": t("outlier_score")},
+        title="Лидеры по просмотрам и виральности"
+    )
+    fig.update_layout(yaxis={"autorange": "reversed"}, height=350, margin={"l": 0, "r": 20, "t": 40, "b": 20})
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Videos List & Factor Analysis Expanders
+    st.markdown(f"#### 📋 Список видео с факторным анализом ({len(df)})")
+    
+    for idx, v in df.iterrows():
+        badges_display = f" `{v['badges_str']}`" if v["badges_str"] else ""
+        expander_title = f"#{idx+1} | {v['view_count']:,} просм. | {v.get('outlier_score', 1.0)}x | {v['channel_title']} — «{v['title']}»{badges_display}"
+        
+        with st.expander(expander_title):
+            c_thumb, c_stats, c_ai = st.columns([2, 3, 4])
+            
+            with c_thumb:
+                if v.get("thumbnail_url"):
+                    st.image(v["thumbnail_url"], use_container_width=True)
+                st.markdown(f"[▶️ Смотреть на YouTube]({v['youtube_link']})")
+
+            with c_stats:
+                st.markdown(f"**Канал:** {v['channel_title']}")
+                st.markdown(f"**Просмотры:** {v['view_count']:,}")
+                st.markdown(f"**Норма канала:** {v.get('channel_avg_views', 0):,}")
+                st.markdown(f"**Множитель (Outlier):** `{v.get('outlier_score', 1.0)}x`")
+                st.markdown(f"**Скорость (VPH):** `{v.get('velocity_vph', 0.0)}` просм/ч")
+                st.markdown(f"**Вовлеченность (ER):** `{v.get('engagement_rate_pct', 0.0)}%`")
+                st.markdown(f"**Опубликовано:** {str(v.get('published_at'))[:10]}")
+
+            with c_ai:
+                st.markdown(f"##### {t('explain_ai_btn')}")
+                explain_key = f"explain_{v['video_id']}"
+                
+                if st.button(f"🔍 Запустить Gemini разбор", key=f"btn_{explain_key}"):
+                    with st.spinner("Анализ факторов успеха через Gemini 2.5 Flash..."):
+                        try:
+                            res = client.explain_video(v["video_id"], set_id=selected_set_id)
+                            st.session_state[explain_key] = res.get("explanation", {})
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+
+                if explain_key in st.session_state:
+                    exp = st.session_state[explain_key]
+                    st.success(f"🎯 **{t('ai_verdict')}:** {exp.get('verdict', '')}")
+                    st.info(f"🎣 **{t('ai_hook')}:** {exp.get('hook_analysis', '')}")
+                    st.markdown(f"🔥 **{t('ai_trend')}:** {exp.get('trend_alignment', '')}")
+                    st.markdown(f"💡 **{t('ai_actionable')}:** {exp.get('actionable_takeaway', '')}")

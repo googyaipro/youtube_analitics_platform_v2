@@ -1,44 +1,74 @@
 import logging
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
-from backend.services.agent_orchestrator import AgentOrchestrator
+from backend.core.database import get_db
+from backend.core.security import get_current_user, decrypt_secret
+from backend.models.user import User
+from backend.models.channel_set import ChannelSet
+from backend.schemas.video import AnalyzeRequest, AnalyzeResponse
+from backend.services.analytics_service import AnalyticsService
+from backend.services.gemini_service import GeminiService
 
 logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/analyze", tags=["AI Analyst"])
-
-agent = AgentOrchestrator()
-
-
-class AnalyzeRequest(BaseModel):
-    query: str = Field(..., description="Natural language question, e.g. 'Compare views for @MKBHD'")
-    channel_id: Optional[str] = Field(None, description="Optional channel ID context")
-
-
-class AnalyzeResponse(BaseModel):
-    channel_title: str
-    summary_text: str
-    key_findings: List[str]
-    anomalies_detected: bool
-    plotly_spec: Optional[Dict[str, Any]] = None
-    videos_analyzed: int
-    execution_time_ms: float
 
 
 @router.post("", response_model=AnalyzeResponse)
-def analyze_query(payload: AnalyzeRequest):
+def analyze_query(
+    payload: AnalyzeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    AI Analyst endpoint for Streamlit dashboard.
-    Returns markdown text findings + interactive Plotly JSON chart specification.
+    AI Analyst interactive query endpoint.
+    Answers strategic, comparative, or diagnostic questions about videos in the user's channel set.
     """
-    result = agent.process_query(user_text=payload.query, output_format="plotly")
+    target_set_id = payload.set_id or current_user.active_set_id
+    if not target_set_id:
+        first_set = db.query(ChannelSet).filter(ChannelSet.user_id == current_user.id).first()
+        if first_set:
+            target_set_id = first_set.id
+
+    videos = []
+    if target_set_id:
+        videos = AnalyticsService.get_set_enriched_videos(db, current_user.id, target_set_id, limit=20)
+
+    gemini_key = decrypt_secret(current_user.gemini_api_key_encrypted)
+    target_lang = payload.target_language or current_user.language or "ru"
+
+    result = GeminiService.ask_analyst(
+        query=payload.query,
+        videos_context=videos,
+        target_language=target_lang,
+        gemini_api_key=gemini_key
+    )
+
+    # Optional plotly spec if we have video data
+    plotly_spec = None
+    if videos:
+        top_vids = sorted(videos[:6], key=lambda x: x.get("view_count", 0), reverse=True)
+        plotly_spec = {
+            "data": [
+                {
+                    "x": [v.get("title", "")[:25] + "..." for v in top_vids],
+                    "y": [v.get("view_count", 0) for v in top_vids],
+                    "type": "bar",
+                    "marker": {"color": "#3B82F6"}
+                }
+            ],
+            "layout": {
+                "title": "Сравнение просмотров (Топ видео)",
+                "xaxis": {"tickangle": -20},
+                "yaxis": {"title": "Просмотры"},
+                "margin": {"b": 100}
+            }
+        }
+
     return AnalyzeResponse(
-        channel_title=result.get("channel_title", "Analytics"),
-        summary_text=result.get("summary_text", ""),
+        answer=result.get("answer", "Нет ответа"),
         key_findings=result.get("key_findings", []),
-        anomalies_detected=result.get("anomalies_detected", False),
-        plotly_spec=result.get("plotly_spec"),
-        videos_analyzed=result.get("videos_analyzed", 0),
-        execution_time_ms=result.get("execution_time_ms", 0.0)
+        plotly_spec=plotly_spec
     )

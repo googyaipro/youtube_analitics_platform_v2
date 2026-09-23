@@ -37,6 +37,7 @@ env/
 .env.local
 *.json
 !credentials.template.json
+!dashboard/locales/*.json
 service_account.json
 key.json
 
@@ -53,3 +54,9 @@ key.json
 # Logs
 logs/
 *.log
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+

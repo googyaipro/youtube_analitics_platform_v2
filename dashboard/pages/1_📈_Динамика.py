@@ -1,22 +1,30 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from utils.api_client import APIClient
+from dashboard.utils.api_client import get_api_client
+from dashboard.utils.auth_ui import require_auth
+from dashboard.utils.i18n import t
 
-st.set_page_config(page_title="Динамика конкурентов", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Динамика и Лидерборд", page_icon="📈", layout="wide")
+
+user = require_auth()
+client = get_api_client()
+
+active_set_id = user.get("active_set_id")
+
 st.title("📈 Мониторинг конкурентов: Динамика и лидерборды")
-st.caption("Быстрые запросы к хранилищу BigQuery (v_latest_channel_stats) без расхода квот YouTube API.")
+st.caption("Анализ темпов роста, вовлеченности и распределения виральности в активном наборе каналов.")
 
-client = APIClient()
-channels = client.get_channels()
+channels = client.get_channels(set_id=active_set_id)
+videos = client.get_videos(set_id=active_set_id, limit=100)
 
 if not channels:
-    st.info("В базе данных пока нет каналов. Добавьте первый канал во вкладке **⚙️ Управление каналами**.")
+    st.info(t("no_channels"))
 else:
     df_channels = pd.DataFrame(channels)
 
-    # Top metrics row
-    st.subheader("🏆 Лидерборд каналов")
+    # 1. Channels leaderboard
+    st.subheader("🏆 Лидерборд каналов в наборе")
     col1, col2 = st.columns(2)
 
     with col1:
@@ -27,7 +35,6 @@ else:
             color="subscriber_count",
             title="Подписчики по каналам",
             labels={"title": "Канал", "subscriber_count": "Подписчики"},
-            text_auto=True,
             color_continuous_scale="Blues"
         )
         st.plotly_chart(fig_subs, use_container_width=True)
@@ -40,11 +47,35 @@ else:
             color="view_count",
             title="Суммарные просмотры",
             labels={"title": "Канал", "view_count": "Просмотры"},
-            text_auto=True,
-            color_continuous_scale="Viridis"
+            color_continuous_scale="Teal"
         )
         st.plotly_chart(fig_views, use_container_width=True)
 
+    # 2. Virality Matrix (Scatter plot)
+    if videos:
+        st.markdown("---")
+        st.subheader("🎯 Матрица виральности: Просмотры vs Множитель нормы (Outlier Score)")
+        df_v = pd.DataFrame(videos)
+        
+        fig_scatter = px.scatter(
+            df_v,
+            x="view_count",
+            y="outlier_score",
+            size="velocity_vph",
+            color="channel_title",
+            hover_name="title",
+            labels={
+                "view_count": "Просмотры",
+                "outlier_score": "Множитель к средней норме автора",
+                "velocity_vph": "Скорость (VPH)",
+                "channel_title": "Канал"
+            },
+            title="Видео с наивысшим отклонением от нормы (Размер точки = Скорость набора VPH)"
+        )
+        fig_scatter.add_hline(y=1.8, line_dash="dash", line_color="red", annotation_text="Порог вирального хита (1.8x)")
+        st.plotly_chart(fig_scatter, use_container_width=True)
+
+    # 3. Channels Table
     st.markdown("---")
     st.subheader("📋 Сводная таблица каналов")
     df_channels["channel_url"] = df_channels.apply(
@@ -57,7 +88,6 @@ else:
         "subscriber_count": "Подписчики",
         "view_count": "Просмотры",
         "video_count": "Всего видео",
-        "country": "Страна",
         "channel_url": "YouTube"
     }
     cols_to_show = [c for c in column_mapping.keys() if c in df_channels.columns]

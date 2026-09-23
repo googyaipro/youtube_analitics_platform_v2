@@ -1,65 +1,83 @@
 import streamlit as st
 import plotly.graph_objects as go
-from utils.api_client import APIClient
+from dashboard.utils.api_client import get_api_client
+from dashboard.utils.auth_ui import require_auth
+from dashboard.utils.i18n import t
 
-st.set_page_config(page_title="AI-Аналитик (Gemini)", page_icon="💬", layout="wide")
-st.title("💬 AI-Аналитик YouTube (Gemini 3.8 Flash)")
-st.caption("Интеллектуальный анализ каналов, выявление аномалий и автоматическое построение интерактивных графиков.")
+st.set_page_config(page_title="AI-Аналитик", page_icon="💬", layout="wide")
 
-client = APIClient()
+user = require_auth()
+client = get_api_client()
 
-# Session state for chat history
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [
+active_set_id = user.get("active_set_id")
+
+st.title(f"💬 {t('ai_analyst_title')}")
+st.caption(f"{t('ai_analyst_subtitle')} (Gemini 2.5 Flash / Google AI Studio)")
+
+if not user.get("gemini_api_key_valid"):
+    st.warning("⚠️ Для работы интерактивного AI-аналитика требуется добавить ваш бесплатный **Gemini API Key** в разделе **«🔑 Профиль и API»**.")
+
+# Chat history per active set
+history_key = f"chat_history_{active_set_id}"
+if history_key not in st.session_state:
+    st.session_state[history_key] = [
         {
             "role": "assistant",
-            "content": "Привет! Я твой YouTube AI-аналитик. Спроси меня, например:\n- *Сравни вовлеченность и просмотры видео @juliangoldieseo*\n- *Какое видео набрало больше всего просмотров у Jack Roberts?*",
+            "content": "Привет! Я твой YouTube AI-аналитик. Задай мне любой вопрос о твоих конкурентах в этом наборе каналов!\n\nНапример:\n- *Какие форматы роликов сейчас показывают максимальный рост?*\n- *Проанализируй заголовки лидеров по просмотрам.*\n- *Что мне снять на свой канал на основе успешных тем конкурентов?*",
             "chart": None
         }
     ]
 
-# Display past messages
-for msg in st.session_state.chat_history:
+# Display history
+for msg in st.session_state[history_key]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if msg.get("chart"):
-            fig = go.Figure(msg["chart"])
-            st.plotly_chart(fig, use_container_width=True)
+            try:
+                fig = go.Figure(msg["chart"])
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception:
+                pass
 
 # User input
-user_query = st.chat_input("Задайте вопрос по аналитике каналов...")
+user_query = st.chat_input(t("ai_query_placeholder"))
 
 if user_query:
-    # Append user message
-    st.session_state.chat_history.append({"role": "user", "content": user_query, "chart": None})
+    st.session_state[history_key].append({"role": "user", "content": user_query, "chart": None})
     with st.chat_message("user"):
         st.markdown(user_query)
 
-    # Call AI Analyst backend
     with st.chat_message("assistant"):
-        with st.spinner("Gemini анализирует видео и строит график..."):
-            response = client.ask_ai_analyst(user_query)
-
-            if "error" in response and not response.get("summary_text"):
-                error_msg = f"⚠️ Ошибка: {response['error']}"
-                st.error(error_msg)
-                st.session_state.chat_history.append({"role": "assistant", "content": error_msg, "chart": None})
-            else:
-                summary = response.get("summary_text", "")
+        with st.spinner("Gemini анализирует контекст видео..."):
+            try:
+                response = client.ask_ai_analyst(
+                    query=user_query,
+                    set_id=active_set_id,
+                    target_language=user.get("language", "ru")
+                )
+                answer = response.get("answer", "")
                 findings = response.get("key_findings", [])
                 plotly_spec = response.get("plotly_spec")
 
-                # Compose answer
-                findings_text = "\n".join([f"- {f}" for f in findings]) if findings else ""
-                full_text = f"{summary}\n\n**Ключевые инсайты:**\n{findings_text}"
+                findings_text = "\n".join([f"• {f}" for f in findings]) if findings else ""
+                full_text = answer
+                if findings_text:
+                    full_text += f"\n\n**📌 Ключевые выводы:**\n{findings_text}"
+
                 st.markdown(full_text)
-
                 if plotly_spec:
-                    fig = go.Figure(plotly_spec)
-                    st.plotly_chart(fig, use_container_width=True)
+                    try:
+                        fig = go.Figure(plotly_spec)
+                        st.plotly_chart(fig, use_container_width=True)
+                    except Exception:
+                        pass
 
-                st.session_state.chat_history.append({
+                st.session_state[history_key].append({
                     "role": "assistant",
                     "content": full_text,
                     "chart": plotly_spec
                 })
+            except Exception as e:
+                err = f"Ошибка: {e}"
+                st.error(err)
+                st.session_state[history_key].append({"role": "assistant", "content": err, "chart": None})

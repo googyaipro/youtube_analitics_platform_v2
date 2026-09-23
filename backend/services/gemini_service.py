@@ -1,215 +1,159 @@
 import json
 import logging
 import re
-from datetime import datetime
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
-
-from backend.prompts import load_prompt
-from config.settings import get_settings
+from typing import Any, Dict, List, Optional, Tuple
+import httpx
 
 logger = logging.getLogger(__name__)
 
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+FALLBACK_MODEL_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
-class AnalysisReport(BaseModel):
-    summary_text: str = Field(..., description="High-level analytical summary")
-    key_findings: List[str] = Field(..., description="List of 3-4 bullet insights")
-    anomalies_detected: bool = Field(False, description="Flag for view or engagement anomalies")
-    matplotlib_code: str = Field(..., description="Python matplotlib code for static image")
-    plotly_code: str = Field(..., description="Python plotly code for interactive chart")
+LANGUAGE_PROMPT_NAMES = {
+    "ru": "русском (Russian)",
+    "en": "английском (English)",
+    "de": "немецком (German)",
+    "fi": "финском (Finnish)",
+    "ka": "грузинском (Georgian - ქართული)"
+}
 
 
 class GeminiService:
-    def __init__(self):
-        settings = get_settings()
-        self.project_id = settings.GCP_PROJECT_ID
-        self.region = getattr(settings, "VERTEX_AI_REGION", None) or "us"
-        self.model_name = settings.GEMINI_MODEL
-        self._model = None
+    @staticmethod
+    def verify_api_key(api_key: Optional[str]) -> Tuple[bool, str]:
+        """Test Gemini API key validity from Google AI Studio using a micro-prompt."""
+        if not api_key or len(api_key.strip()) < 10:
+            return False, "Gemini API key is empty or too short."
+
+        clean_key = api_key.strip()
+        body = {
+            "contents": [{"role": "user", "parts": [{"text": "Reply with 'OK'."}]}],
+            "generationConfig": {"maxOutputTokens": 10}
+        }
 
         try:
-            import vertexai
-            from vertexai.generative_models import GenerativeModel
-            vertexai.init(project=self.project_id, location=self.region)
-            self._model = GenerativeModel(self.model_name)
-            logger.info(f"Vertex AI Gemini model '{self.model_name}' initialized in location '{self.region}'.")
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(f"{GEMINI_API_URL}?key={clean_key}", json=body)
+                if res.status_code == 200:
+                    return True, "Gemini API key is valid and connected successfully."
+                elif res.status_code == 404:
+                    # Try fallback model
+                    res2 = client.post(f"{FALLBACK_MODEL_URL}?key={clean_key}", json=body)
+                    if res2.status_code == 200:
+                        return True, "Gemini API key is valid (using Gemini 1.5 Flash)."
+                
+                error_msg = res.json().get("error", {}).get("message", f"HTTP {res.status_code}")
+                return False, f"Gemini Error: {error_msg}"
         except Exception as e:
-            logger.warning(f"Vertex AI Gemini initialization warning ({e}). Using rule-based fallback.")
+            logger.error(f"Error testing Gemini key: {e}")
+            return False, f"Network error connecting to Gemini API: {e}"
 
-    @property
-    def is_available(self) -> bool:
-        return self._model is not None
+    @staticmethod
+    def _call_gemini(prompt: str, api_key: str, max_tokens: int = 2048, temperature: float = 0.4) -> Optional[str]:
+        """Direct HTTP call to Gemini API using user's personal key."""
+        if not api_key:
+            return None
 
-    def analyze_videos(
-        self,
-        channel_title: str,
-        videos_data: List[Dict[str, Any]],
-        user_query: Optional[str] = None
-    ) -> AnalysisReport:
-        """Run analytical reasoning and code generation using Gemini with structured output."""
-        if not self.is_available or not videos_data:
-            return self._generate_rule_based_report(channel_title, videos_data, user_query)
+        body = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens
+            }
+        }
 
-        template = load_prompt("analyzer.txt")
-        prompt = (
-            template
-            .replace("{{channel_title}}", channel_title)
-            .replace("{{user_query}}", user_query or "Сравни просмотры, вовлеченность и динамику последних видео.")
-            .replace("{{dataset_json}}", json.dumps(videos_data[:10], default=str, indent=2))
-        )
         try:
-            response = self._model.generate_content(
-                prompt,
-                generation_config={"temperature": 0.2, "response_mime_type": "application/json"}
-            )
-            raw_text = response.text.strip()
-            if raw_text.startswith("```"):
-                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-                raw_text = re.sub(r"\s*```$", "", raw_text)
-            data = json.loads(raw_text)
-            return AnalysisReport(**data)
+            with httpx.Client(timeout=30.0) as client:
+                res = client.post(f"{GEMINI_API_URL}?key={api_key.strip()}", json=body)
+                if res.status_code != 200:
+                    # Try fallback model
+                    res = client.post(f"{FALLBACK_MODEL_URL}?key={api_key.strip()}", json=body)
+                
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            return parts[0].get("text", "").strip()
+                else:
+                    logger.error(f"Gemini API returned error {res.status_code}: {res.text}")
         except Exception as e:
-            logger.error(f"Error calling Vertex AI Gemini ({e}), using rule-based fallback.")
-            return self._generate_rule_based_report(channel_title, videos_data, user_query)
+            logger.error(f"Exception calling Gemini: {e}")
 
-    def _generate_rule_based_report(
-        self,
-        channel_title: str,
-        videos_data: List[Dict[str, Any]],
-        user_query: Optional[str]
-    ) -> AnalysisReport:
-        """Reliable offline report generator."""
-        count = len(videos_data)
-        total_views = sum(v.get("view_count", 0) for v in videos_data)
-        avg_views = int(total_views / count) if count > 0 else 0
-        top_video = max(videos_data, key=lambda x: x.get("view_count", 0)) if videos_data else {}
+        return None
 
-        matplotlib_code = """
-plt.figure(figsize=(9, 5))
-titles = [t[:28] + '...' if len(t) > 28 else t for t in df['title'][:6]]
-views = df['view_count'][:6]
-bars = plt.barh(titles, views, color='#34A853')
-plt.xlabel('Количество просмотров')
-plt.title(f'Сравнение последних видео ({channel_title})', fontsize=12, fontweight='bold')
-plt.gca().invert_yaxis()
-plt.grid(axis='x', linestyle='--', alpha=0.7)
-plt.tight_layout()
-""".replace("{channel_title}", channel_title)
-
-        plotly_code = """
-import plotly.express as px
-fig = px.bar(
-    df.head(8),
-    x='view_count',
-    y='title',
-    orientation='h',
-    title='Просмотры видео (Plotly)',
-    color='like_count',
-    labels={'view_count': 'Просмотры', 'title': 'Название'}
-)
-fig.update_layout(yaxis={'autorange': 'reversed'})
-"""
-
-        return AnalysisReport(
-            summary_text=(
-                f"Анализ канала **{channel_title}** по последним {count} видео:\n"
-                f"• Суммарно просмотров: **{total_views:,}**\n"
-                f"• Среднее число просмотров на видео: **{avg_views:,}**\n"
-                f"• Топ-видео по просмотрам: *«{top_video.get('title', 'N/A')}»* ({top_video.get('view_count', 0):,} просмотров)."
-            ),
-            key_findings=[
-                f"Самое популярное видео набрало {top_video.get('view_count', 0):,} просмотров.",
-                f"Средняя активность аудитории стабильна ({avg_views:,} views/video).",
-                "Вовлеченность (ER) на высоком уровне благодаря активным комментариям."
-            ],
-            anomalies_detected=False,
-            matplotlib_code=matplotlib_code.strip(),
-            plotly_code=plotly_code.strip()
-        )
-
+    @classmethod
     def explain_video_success(
-        self,
+        cls,
         video_data: Dict[str, Any],
-        channel_title: Optional[str] = None
+        target_language: str = "ru",
+        gemini_api_key: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Explain why a video achieved its ranking/success using Gemini 3.5 Flash."""
+        """Explain why a specific video outperformed channel averages."""
         title = video_data.get("title", "")
-        ch_title = channel_title or video_data.get("channel_title", "YouTube Channel")
+        ch_title = video_data.get("channel_title", "Channel")
         views = video_data.get("view_count", 0)
-        likes = video_data.get("like_count", 0)
-        comments = video_data.get("comment_count", 0)
         avg_views = video_data.get("channel_avg_views") or views
-        outlier = video_data.get("outlier_score") or (round(views / avg_views, 2) if avg_views else 1.0)
-        vph = video_data.get("velocity_vph") or 0.0
-        er = video_data.get("engagement_rate_pct") or 0.0
+        outlier = video_data.get("outlier_score", 1.0)
+        vph = video_data.get("velocity_vph", 0.0)
+        er = video_data.get("engagement_rate_pct", 0.0)
 
-        if not self.is_available:
-            return self._rule_based_explanation(video_data)
+        lang_name = LANGUAGE_PROMPT_NAMES.get(target_language, "русском (Russian)")
+
+        if not gemini_api_key:
+            return cls._rule_based_explanation(video_data, target_language)
 
         prompt = f"""
-Ты — эксперт по алгоритмам YouTube и виральности контента в нише IT, AI и технологий.
-Проанализируй видео, которое занимает высокое место в рейтинге просмотров, и объясни, ПОЧЕМУ оно добилось такого результата.
+Ты — профессиональный YouTube AI-аналитик и виральный стратег.
+Проанализируй видео, которое показало высокий результат просмотров среди конкурентов.
 
-Данные о видео:
+ДАННЫЕ:
 - Название: "{title}"
 - Канал: "{ch_title}"
 - Просмотры: {views:,}
-- Средние просмотры этого канала: {int(avg_views):,}
-- Outlier Score (Хайп-множитель к средней норме канала): {outlier}x
+- Средняя норма просмотров автора: {int(avg_views):,}
+- Outlier Score (Хайп-множитель к средней норме): {outlier}x
 - Скорость набора просмотров (VPH): {vph} просм/час
-- Лайки: {likes:,}
-- Комментарии: {comments:,}
 - Вовлеченность (ER): {er}%
 
-Верни строгий JSON-объект (без markdown-блоков, только чистый JSON) со следующей структурой:
+ТРЕБОВАНИЯ:
+1. Напиши весь анализ СТРОГО на языке: {lang_name}.
+2. Верни чистый JSON-объект без оберток со следующими ключами:
 {{
-  "verdict": "Краткий емкий вывод (2 предложения), почему именно этот ролик выстрелил и занял топовое место в таблице.",
-  "hook_analysis": "Разбор кликабельности заголовка и формулировки темы (какие слова, контрасты или интрига привлекли клики).",
-  "trend_alignment": "Оседланный тренд или инфоповод (почему тема горячая прямо сейчас).",
-  "engagement_factor": "Оценка отклика аудитории на основе лайков, комментариев и вовлеченности.",
-  "actionable_takeaway": "Практический совет: что конкуренты или автор могут повторить на своем канале."
+  "verdict": "Краткий емкий вывод (2 предложения), почему именно этот ролик выстрелил и занял высокое место.",
+  "hook_analysis": "Разбор кликабельности заголовка и формулировки темы (интрига, триггеры, контраст).",
+  "trend_alignment": "Оседланный тренд или инфоповод (почему тема горячая).",
+  "engagement_factor": "Оценка отклика аудитории на основе просмотров, скорости и ER.",
+  "actionable_takeaway": "Практический совет: что автор может повторить на своем канале."
 }}
 """
-        try:
-            response = self._model.generate_content(
-                prompt,
-                generation_config={"temperature": 0.2, "response_mime_type": "application/json"}
-            )
-            raw_text = response.text.strip()
-            if raw_text.startswith("```"):
-                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-                raw_text = re.sub(r"\s*```$", "", raw_text)
-            return json.loads(raw_text)
-        except Exception as e:
-            logger.error(f"Error calling Gemini in explain_video_success ({e}), using fallback.")
-            return self._rule_based_explanation(video_data)
+        response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=1500, temperature=0.2)
+        if response_text:
+            try:
+                clean_json = re.sub(r"^```(?:json)?\s*", "", response_text.strip())
+                clean_json = re.sub(r"\s*```$", "", clean_json)
+                return json.loads(clean_json)
+            except Exception as e:
+                logger.warning(f"Error parsing Gemini JSON: {e}")
 
-    def _rule_based_explanation(self, video_data: Dict[str, Any]) -> Dict[str, Any]:
-        title = video_data.get("title", "")
-        ch_title = video_data.get("channel_title", "YouTube Channel")
-        views = video_data.get("view_count", 0)
-        avg_views = video_data.get("channel_avg_views") or views
-        outlier = video_data.get("outlier_score") or (round(views / avg_views, 2) if avg_views else 1.0)
-        vph = video_data.get("velocity_vph") or 0.0
+        return cls._rule_based_explanation(video_data, target_language)
 
-        return {
-            "verdict": f"Ролик «{title}» канала {ch_title} набрал {views:,} просмотров, что в {outlier}x превышает среднюю норму канала ({int(avg_views):,}). Видео вызвало высокий интерес аудитории и было активно рекомендовано алгоритмами YouTube.",
-            "hook_analysis": "Заголовок эффективно использует формулу интриги и названия ключевых ИИ-инструментов, привлекая как энтузиастов, так и профессионалов.",
-            "trend_alignment": "Тема ролика идеально совпала с текущим глобальным всплеском интереса к новым моделям ИИ и автоматизации.",
-            "engagement_factor": f"Темп набора составляет {vph} просмотров в час при стабильном соотношении лайков и комментариев.",
-            "actionable_takeaway": "Используйте связку конкретных названий инструментов в заголовке и выпускайте видео в первые 48–72 часа после громких релизов."
-        }
-
+    @classmethod
     def generate_daily_digest(
-        self,
+        cls,
+        set_name: str,
         channels_summary: List[Dict[str, Any]],
         top_videos: List[Dict[str, Any]],
-        anomalies: List[str]
+        anomalies: List[str],
+        target_language: str = "ru",
+        gemini_api_key: Optional[str] = None
     ) -> str:
-        """Generate an executive AI daily digest using Gemini 3.8 Flash for Telegram."""
-        today_str = datetime.now().strftime("%d.%m.%Y")
-        if not self.is_available or not top_videos:
-            return self._rule_based_daily_digest(today_str, channels_summary, top_videos, anomalies)
+        """Generate executive AI daily digest tailored to user's channel set and language."""
+        lang_name = LANGUAGE_PROMPT_NAMES.get(target_language, "русском (Russian)")
+
+        if not gemini_api_key or not top_videos:
+            return cls._rule_based_daily_digest(set_name, channels_summary, top_videos, anomalies, target_language)
 
         top_vids_compact = [
             {
@@ -223,59 +167,121 @@ fig.update_layout(yaxis={'autorange': 'reversed'})
             for v in top_videos[:5]
         ]
 
-        channels_compact = [
-            f"{c.get('title')}: {c.get('subscriber_count', 0):,} subs"
-            for c in channels_summary[:8]
-        ]
-
         prompt = f"""
-Ты — ведущий YouTube AI-аналитик и стратег платформы. Подготовь ежедневный утренний дайджест для владельца канала на основе свежих данных конкурентов за сегодня ({today_str}).
+Ты — ведущий YouTube AI-аналитик и стратег платформы.
+Подготовь ежедневный дайджест для владельца тематического набора каналов «{set_name}».
 
 ДАННЫЕ МОНИТОРИНГА:
-• Отслеживаемые каналы: {', '.join(channels_compact)}
+• Набор каналов: {set_name}
+• Отслеживается каналов: {len(channels_summary)}
 • Аномалии и всплески: {json.dumps(anomalies, ensure_ascii=False) if anomalies else 'Стабильная динамика'}
-• Топ свежих видео конкурентов с факторным анализом:
+• Топ свежих роликов конкурентов с факторным анализом:
 {json.dumps(top_vids_compact, ensure_ascii=False, indent=2)}
 
-ФОРМАТ СООБЩЕНИЯ (для Telegram, используй Markdown, эмодзи, выделение жирным):
-📢 **Ежедневный дайджест YouTube Analytics ({today_str})**
+ТРЕБОВАНИЯ:
+1. Напиши весь текст СТРОГО на языке: {lang_name}.
+2. Структура сообщения для Telegram (с эмодзи, выделением жирным):
+📢 Дайджест YouTube Analytics: {set_name}
 
-📊 **Обзор ниши и динамика:**
-(2-3 емких предложения: что происходит у конкурентов, какие темы набирают просмотры, общий тренд)
+📊 Обзор ниши и динамика:
+(2-3 емких предложения о том, какие темы и подходы сейчас растут у конкурентов)
 
-🔥 **Главный прорыв дня:**
+🔥 Главный прорыв дня:
 (Название топ-ролика, канал, просмотры, Outlier Score. В 2 предложениях объясни, почему тема или заголовок сработали)
 
-💡 **Стратегический совет (Actionable Takeaway):**
-(1-2 конкретных совета: какую идею, хук или формат сейчас стоит внедрить/снять на своем канале)
+💡 Стратегический совет (Actionable Takeaway):
+(1-2 конкретных совета: какую тему, хук или формат сейчас стоит внедрить автору)
 
-Сделай текст живым, структурированным, экспертным и без лишней 'воды'. Объем — около 120-200 слов.
+Объем — около 120-200 слов. Без лишней воды.
 """
-        try:
-            response = self._model.generate_content(
-                prompt,
-                generation_config={"temperature": 0.4, "max_output_tokens": 4096}
-            )
-            return response.text.strip()
-        except Exception as e:
-            logger.error(f"Error calling Gemini for daily digest ({e}), using fallback.")
-            return self._rule_based_daily_digest(today_str, channels_summary, top_videos, anomalies)
+        response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=2500, temperature=0.4)
+        if response_text:
+            return response_text
 
+        return cls._rule_based_daily_digest(set_name, channels_summary, top_videos, anomalies, target_language)
+
+    @classmethod
+    def ask_analyst(
+        cls,
+        query: str,
+        videos_context: List[Dict[str, Any]],
+        target_language: str = "ru",
+        gemini_api_key: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Interactive Q&A with Gemini regarding channel videos."""
+        lang_name = LANGUAGE_PROMPT_NAMES.get(target_language, "русском (Russian)")
+
+        if not gemini_api_key:
+            return {
+                "answer": "Для получения персонального AI-анализа укажите ваш Gemini API ключ в настройках профиля.",
+                "key_findings": ["Ключ Gemini не настроен"]
+            }
+
+        prompt = f"""
+Ты — персональный YouTube AI-аналитик. Ответь на вопрос пользователя на основе предоставленных данных о видео конкурентов.
+
+ВОПРОС ПОЛЬЗОВАТЕЛЯ: "{query}"
+
+ДАННЫЕ О ВИДЕО (ТОП 10):
+{json.dumps(videos_context[:10], default=str, ensure_ascii=False, indent=2)}
+
+ТРЕБОВАНИЯ:
+1. Ответь СТРОГО на языке: {lang_name}.
+2. Дай четкий практический ответ со ссылкой на конкретные названия видео и цифры.
+3. Верни чистый JSON следующего вида:
+{{
+  "answer": "Развернутый ответ эксперта (2-3 абзаца)",
+  "key_findings": ["Ключевой инсайт 1", "Ключевой инсайт 2", "Ключевой инсайт 3"]
+}}
+"""
+        response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=2048, temperature=0.3)
+        if response_text:
+            try:
+                clean_json = re.sub(r"^```(?:json)?\s*", "", response_text.strip())
+                clean_json = re.sub(r"\s*```$", "", clean_json)
+                return json.loads(clean_json)
+            except Exception as e:
+                logger.warning(f"Failed to parse ask_analyst JSON: {e}")
+                return {"answer": response_text, "key_findings": []}
+
+        return {
+            "answer": "Не удалось получить ответ от Gemini API. Проверьте актуальность вашего API-ключа.",
+            "key_findings": []
+        }
+
+    @staticmethod
+    def _rule_based_explanation(video_data: Dict[str, Any], target_language: str) -> Dict[str, Any]:
+        title = video_data.get("title", "")
+        ch_title = video_data.get("channel_title", "Channel")
+        views = video_data.get("view_count", 0)
+        avg = int(video_data.get("channel_avg_views") or views)
+        outlier = video_data.get("outlier_score", 1.0)
+        vph = video_data.get("velocity_vph", 0.0)
+
+        return {
+            "verdict": f"Ролик «{title}» ({ch_title}) набрал {views:,} просмотров ({outlier}x от нормы канала {avg:,}). Высокий темп и вовлеченность позволили ролику занять лидирующие позиции.",
+            "hook_analysis": "Заголовок четко бьет в актуальную проблему целевой аудитории с сильной интригой.",
+            "trend_alignment": "Тематика попала в актуальный поисковый интерес пользователей.",
+            "engagement_factor": f"Темп набора составляет {vph} просмотров в час при стабильном отклике аудитории.",
+            "actionable_takeaway": "Снимите ролик-ответ или разбор похожей темы с фокусом на практическую пользу в заголовке."
+        }
+
+    @staticmethod
     def _rule_based_daily_digest(
-        self,
-        today_str: str,
+        set_name: str,
         channels_summary: List[Dict[str, Any]],
         top_videos: List[Dict[str, Any]],
-        anomalies: List[str]
+        anomalies: List[str],
+        target_language: str
     ) -> str:
         lines = [
-            f"📢 **Ежедневный дайджест YouTube Analytics ({today_str})**\n",
+            f"📢 **Дайджест YouTube Analytics: {set_name}**\n",
             f"• Отслеживается каналов: **{len(channels_summary)}**",
             f"• Статус сбора метрик: **Успешно**\n"
         ]
         if top_videos:
             best = top_videos[0]
-            lines.append("🔥 **Главный хит дня:**")
+            lines.append("🔥 **Главный прорыв:**")
             lines.append(f"• «{best.get('title')}» ({best.get('channel_title')})")
             lines.append(f"  Просмотры: **{best.get('view_count', 0):,}** | Темп: **{int(best.get('velocity_vph', 0))} просм/ч** | Outlier: **{best.get('outlier_score', 1.0)}x**\n")
 
@@ -284,9 +290,6 @@ fig.update_layout(yaxis={'autorange': 'reversed'})
             for a in anomalies[:3]:
                 lines.append(f"• {a}")
             lines.append("")
-        else:
-            lines.append("📊 **Динамика:** Стабильная динамика просмотров по отслеживаемым конкурентам.\n")
 
-        lines.append("💡 **Инсайт:** Выпускайте ролики по актуальным инфоповодам в первые 24-48 часов для максимизации алгоритмического охвата.")
+        lines.append("💡 **Совет:** Публикуйте ролики по горячим инфоповодам в первые 24-48 часов.")
         return "\n".join(lines)
-
