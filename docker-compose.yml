@@ -43,8 +43,10 @@ services:
         condition: service_healthy
     networks:
       - yap_network
+      - dokploy-network
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
       - "traefik.http.routers.yap-backend.rule=Host(`api.yap.oxyjet.win`)"
       - "traefik.http.routers.yap-backend.entrypoints=websecure"
       - "traefik.http.routers.yap-backend.tls=true"
@@ -66,8 +68,10 @@ services:
       - backend
     networks:
       - yap_network
+      - dokploy-network
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
       - "traefik.http.routers.yap-dashboard.rule=Host(`yap.oxyjet.win`)"
       - "traefik.http.routers.yap-dashboard.entrypoints=websecure"
       - "traefik.http.routers.yap-dashboard.tls=true"
@@ -81,3 +85,6 @@ volumes:
 networks:
   yap_network:
     driver: bridge
+  dokploy-network:
+    external: true
+
