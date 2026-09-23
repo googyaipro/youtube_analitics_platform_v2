@@ -27,6 +27,7 @@ services:
     restart: always
     environment:
       PORT: 8080
+      PYTHONPATH: /app
       DATABASE_URL: postgresql://${POSTGRES_USER:-yap_user}:${POSTGRES_PASSWORD:-yap_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-youtube_analytics}
       JWT_SECRET: ${JWT_SECRET:-${SECRET_KEY:-change-in-production-jwt-secret-key-32chars-min}}
       SECRET_KEY: ${SECRET_KEY:-${JWT_SECRET:-change-in-production-jwt-secret-key-32chars-min}}
@@ -61,6 +62,7 @@ services:
     restart: always
     environment:
       PORT: 8080
+      PYTHONPATH: /app
       BACKEND_API_URL: http://backend:8080/api/v1
       DOKPLOY_WEB_DOMAIN: ${DOKPLOY_WEB_DOMAIN:-yap.oxyjet.win}
       DOKPLOY_API_DOMAIN: ${DOKPLOY_API_DOMAIN:-api.yap.oxyjet.win}
