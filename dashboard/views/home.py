@@ -22,6 +22,16 @@ except ModuleNotFoundError:
 user = require_auth()
 client = get_api_client()
 
+
+def fmt_num(val) -> str:
+    """Safely format numbers with thousands separators without crashing on strings, Decimal, or None."""
+    try:
+        if val is None or val == "" or str(val).strip().lower() == "nan":
+            return "0"
+        return f"{int(float(val)):,}"
+    except (ValueError, TypeError):
+        return str(val)
+
 # --- Sidebar: Channel Set Selector ---
 with st.sidebar:
     st.markdown(f"### 📁 {t('active_set')}")
@@ -107,8 +117,8 @@ kpis = client.get_kpis(set_id=selected_set_id)
 col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric(t("kpi_channels"), kpis.get("total_channels", 0))
 col2.metric(t("kpi_videos"), kpis.get("total_videos", 0))
-col3.metric(t("kpi_views"), f"{kpis.get('total_views', 0):,}")
-col4.metric(t("kpi_avg_views"), f"{kpis.get('avg_views_per_video', 0):,}")
+col3.metric(t("kpi_views"), fmt_num(kpis.get("total_views", 0)))
+col4.metric(t("kpi_avg_views"), fmt_num(kpis.get("avg_views_per_video", 0)))
 col5.metric(t("kpi_viral_hits"), kpis.get("viral_hits_count", 0))
 
 st.markdown("---")
@@ -161,7 +171,7 @@ else:
     
     for idx, v in df.iterrows():
         badges_display = f" `{v['badges_str']}`" if v["badges_str"] else ""
-        expander_title = f"#{idx+1} | {v['view_count']:,} views | {v.get('outlier_score', 1.0)}x | {v['channel_title']} — «{v['title']}»{badges_display}"
+        expander_title = f"#{idx+1} | {fmt_num(v.get('view_count', 0))} views | {v.get('outlier_score', 1.0)}x | {v.get('channel_title', '')} — «{v.get('title', '')}»{badges_display}"
         
         with st.expander(expander_title):
             c_thumb, c_stats, c_ai = st.columns([2, 3, 4])
@@ -172,9 +182,9 @@ else:
                 st.markdown(f"[▶️ YouTube]({v['youtube_link']})")
 
             with c_stats:
-                st.markdown(f"**Channel:** {v['channel_title']}")
-                st.markdown(f"**Views:** {v['view_count']:,}")
-                st.markdown(f"**Channel Avg:** {v.get('channel_avg_views', 0):,}")
+                st.markdown(f"**Channel:** {v.get('channel_title', '')}")
+                st.markdown(f"**Views:** {fmt_num(v.get('view_count', 0))}")
+                st.markdown(f"**Channel Avg:** {fmt_num(v.get('channel_avg_views', 0))}")
                 st.markdown(f"**Multiplier (Outlier):** `{v.get('outlier_score', 1.0)}x`")
                 st.markdown(f"**Velocity (VPH):** `{v.get('velocity_vph', 0.0)}`")
                 st.markdown(f"**Engagement (ER):** `{v.get('engagement_rate_pct', 0.0)}%`")

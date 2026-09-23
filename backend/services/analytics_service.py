@@ -62,9 +62,13 @@ class AnalyticsService:
             for row in results:
                 d = dict(row)
                 views = int(d.get("view_count") or 0)
+                d["view_count"] = views
                 avg_views = float(d.get("channel_avg_views") or views or 1.0)
+                d["channel_avg_views"] = int(avg_views)
                 likes = int(d.get("like_count") or 0)
+                d["like_count"] = likes
                 comments = int(d.get("comment_count") or 0)
+                d["comment_count"] = comments
 
                 pub_at = d.get("published_at")
                 if isinstance(pub_at, str):
