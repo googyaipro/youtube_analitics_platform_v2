@@ -88,14 +88,14 @@ with st.sidebar:
 
 
 # --- Main Dashboard Header ---
-col_head, col_btn = st.columns([3, 1])
+col_head, col_btn = st.columns([2, 2])
 with col_head:
     st.title(f"🎬 {t('app_title')}")
     st.caption(f"{t('app_tagline')} | {t('active_set')}: **{selected_set_name if set_options else 'None'}**")
 
 with col_btn:
     st.write("")
-    col_r1, col_r2 = st.columns(2)
+    col_r1, col_r2, col_r3 = st.columns([1, 1, 1])
     with col_r1:
         if st.button(f"🔄 {t('sync_now')}", use_container_width=True):
             if selected_set_id:
@@ -108,7 +108,23 @@ with col_btn:
                     except Exception as e:
                         st.error(f"Sync error: {e}")
     with col_r2:
+        if st.button("📢 AI-Дайджест", use_container_width=True):
+            if selected_set_id:
+                with st.spinner("Генерирую executive AI-дайджест ниши..."):
+                    try:
+                        d_res = client.get_channel_set_digest(selected_set_id)
+                        st.session_state["active_digest"] = d_res.get("digest")
+                    except Exception as e:
+                        st.error(f"Digest error: {e}")
+    with col_r3:
         if st.button("Refresh", use_container_width=True):
+            st.rerun()
+
+if "active_digest" in st.session_state and st.session_state["active_digest"]:
+    with st.expander("📢 **Executive AI-Дайджест ниши**", expanded=True):
+        st.markdown(st.session_state["active_digest"])
+        if st.button("✕ Скрыть дайджест", key="close_digest"):
+            del st.session_state["active_digest"]
             st.rerun()
 
 # --- Section 1: KPI Cards ---

@@ -233,6 +233,15 @@ def test_telegram_commands_and_linking(db_session):
     }
     assert TelegramService.handle_webhook_update(db_session, update_top) is True
 
+    # 3b. Telegram /digest command
+    update_digest = {
+        "message": {
+            "chat": {"id": 123456789},
+            "text": "/digest"
+        }
+    }
+    assert TelegramService.handle_webhook_update(db_session, update_digest) is True
+
     # 4. Telegram /lang de command
     update_lang = {
         "message": {
@@ -320,6 +329,13 @@ def test_api_endpoints_integration():
         res_kpis = client.get("/api/v1/videos/kpis", headers=headers)
         assert res_kpis.status_code == 200
         assert "total_channels" in res_kpis.json()
+
+        # /channel-sets/{set_id}/digest
+        res_digest = client.get(f"/api/v1/channel-sets/{set_id}/digest", headers=headers)
+        assert res_digest.status_code == 200
+        digest_data = res_digest.json()
+        assert "digest" in digest_data
+        assert digest_data["set_id"] == set_id
 
 
 def test_admin_endpoints_and_authorization():

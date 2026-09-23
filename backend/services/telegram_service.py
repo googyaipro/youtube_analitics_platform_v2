@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from backend.core.security import decrypt_secret
 from backend.models.user import User
 from backend.models.channel_set import ChannelSet
+from backend.models.channel import Channel
 from backend.services.analytics_service import AnalyticsService
 from backend.services.gemini_service import GeminiService
 from config.settings import get_settings
@@ -217,13 +218,51 @@ class TelegramService:
             cls.send_message(
                 chat_id,
                 "🤖 **Доступные команды:**\n"
-                "• /sets — Просмотр и выбор активного набора каналов\n"
+                "• /digest — Свежий исполнительный AI-дайджест ниши\n"
                 "• /top — Топ-10 роликов текущего набора с виральными бейджами\n"
                 "• /explain <номер_в_топе> — Глубокий разбор факторов успеха видео через Gemini\n"
+                "• /sets — Просмотр и выбор активного набора каналов\n"
                 "• /lang <ru|en|de|fi|ka> — Смена языка аналитики\n"
                 "• /status — Проверка статуса API-ключей и расписания\n\n"
                 "🌐 Личный кабинет: [yap.oxyjet.win](https://yap.oxyjet.win)"
             )
+            return True
+
+        elif text in ("/digest", "дайджест", "digest"):
+            active_set_id = user.active_set_id
+            if not active_set_id:
+                first_set = db.query(ChannelSet).filter(ChannelSet.user_id == user.id).first()
+                if first_set:
+                    user.active_set_id = first_set.id
+                    db.commit()
+                    active_set_id = first_set.id
+
+            if not active_set_id:
+                cls.send_message(chat_id, "❌ У вас нет активных наборов каналов. Создайте набор на yap.oxyjet.win.")
+                return True
+
+            active_set = db.query(ChannelSet).filter(ChannelSet.id == active_set_id).first()
+            cls.send_message(chat_id, f"⏳ Составляю executive AI-дайджест по набору «{active_set.name}»...")
+
+            enriched_videos = AnalyticsService.get_set_enriched_videos(db, user.id, active_set_id, limit=15)
+            channels = db.query(Channel).filter(Channel.user_id == user.id, Channel.set_id == active_set_id).all()
+            channels_summary = [{"title": c.title, "subscriber_count": c.subscriber_count} for c in channels]
+
+            anomalies = []
+            for v in enriched_videos:
+                if v.get("outlier_score", 1.0) >= 1.8:
+                    anomalies.append(f"Канал {v.get('channel_title')}: «{v.get('title')}» — {v.get('view_count', 0):,} просмотров ({v.get('outlier_score')}x)")
+
+            gemini_key = decrypt_secret(user.gemini_api_key_encrypted)
+            digest_text = GeminiService.generate_daily_digest(
+                set_name=active_set.name,
+                channels_summary=channels_summary,
+                top_videos=enriched_videos,
+                anomalies=anomalies,
+                target_language=user.language or "ru",
+                gemini_api_key=gemini_key
+            )
+            cls.send_message(chat_id, digest_text)
             return True
 
         elif text == "/sets":

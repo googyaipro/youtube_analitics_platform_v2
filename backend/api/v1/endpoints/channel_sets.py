@@ -3,12 +3,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.core.database import get_db
-from backend.core.security import get_current_user
+from backend.core.security import get_current_user, decrypt_secret
 from backend.models.user import User
 from backend.models.channel_set import ChannelSet
 from backend.models.channel import Channel
 from backend.schemas.channel_set import ChannelSetCreate, ChannelSetUpdate, ChannelSetResponse
 from backend.services.scheduler_service import SchedulerService
+from backend.services.analytics_service import AnalyticsService
+from backend.services.gemini_service import GeminiService
 
 router = APIRouter(prefix="/channel-sets", tags=["Channel Sets & Custom Scheduler"])
 
@@ -198,3 +200,35 @@ def sync_channel_set(
 
     count = SchedulerService.sync_channel_set_data(db, current_user, c_set)
     return {"status": "SUCCESS", "snapshots_synced": count}
+
+
+@router.get("/{set_id}/digest")
+def get_channel_set_digest(
+    set_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Generate or retrieve high-level executive AI daily digest for a channel set."""
+    c_set = db.query(ChannelSet).filter(ChannelSet.id == set_id, ChannelSet.user_id == current_user.id).first()
+    if not c_set:
+        raise HTTPException(status_code=404, detail="Channel set not found.")
+
+    enriched_videos = AnalyticsService.get_set_enriched_videos(db, current_user.id, set_id, limit=15)
+    channels = db.query(Channel).filter(Channel.user_id == current_user.id, Channel.set_id == set_id).all()
+    channels_summary = [{"title": c.title, "subscriber_count": c.subscriber_count} for c in channels]
+
+    anomalies = []
+    for v in enriched_videos:
+        if v.get("outlier_score", 1.0) >= 1.8:
+            anomalies.append(f"Канал {v.get('channel_title')}: «{v.get('title')}» — {v.get('view_count', 0):,} просмотров ({v.get('outlier_score')}x)")
+
+    gemini_key = decrypt_secret(current_user.gemini_api_key_encrypted)
+    digest_text = GeminiService.generate_daily_digest(
+        set_name=c_set.name,
+        channels_summary=channels_summary,
+        top_videos=enriched_videos,
+        anomalies=anomalies,
+        target_language=current_user.language or "ru",
+        gemini_api_key=gemini_key
+    )
+    return {"set_id": set_id, "set_name": c_set.name, "digest": digest_text}

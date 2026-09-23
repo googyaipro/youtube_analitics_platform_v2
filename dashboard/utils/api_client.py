@@ -131,6 +131,12 @@ class APIClient:
         resp.raise_for_status()
         return resp.json()
 
+    def get_channel_set_digest(self, set_id: str) -> Dict[str, Any]:
+        url = f"{self.base_url}/channel-sets/{set_id}/digest"
+        resp = requests.get(url, headers=self._headers(), timeout=60)
+        resp.raise_for_status()
+        return resp.json()
+
     # --- Videos & KPIs ---
     def get_videos(self, set_id: Optional[str] = None, channel_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
         url = f"{self.base_url}/videos"

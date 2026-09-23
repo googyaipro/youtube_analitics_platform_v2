@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
@@ -120,30 +121,29 @@ class GeminiService:
             return cls._rule_based_explanation(target_video, target_language)
 
         prompt = f"""
-Ты — профессиональный YouTube AI-аналитик и виральный стратег.
-Проанализируй видео, которое показало высокий результат просмотров среди конкурентов.
+Ты — профессиональный YouTube-продюсер и виральный стратег топ-уровня (уровня команды MrBeast, Colin & Samir, Paddy Galloway).
+Твоя задача — разложить по косточкам успех видео «{title}» канала «{ch_title}», которое показало взрывной результат в нише.
 
-ДАННЫЕ:
-- Название: "{title}"
-- Канал: "{ch_title}"
-- Просмотры: {views:,}
-- Средняя норма просмотров автора: {int(avg_views):,}
-- Outlier Score (Хайп-множитель к средней норме): {outlier}x
-- Скорость набора просмотров (VPH): {vph} просм/час
-- Вовлеченность (ER): {er}%
+МЕТРИКИ РОЛИКА:
+• Название: "{title}"
+• Канал: "{ch_title}"
+• Просмотры: {views:,} (при средней норме канала: {int(avg_views):,})
+• Outlier Score (кратность превышения средней нормы канала): {outlier}x
+• Скорость набора просмотров: {vph} VPH (просмотров в час)
+• Коэффициент вовлеченности (ER): {er}%
 
 ТРЕБОВАНИЯ:
-1. Напиши весь анализ СТРОГО на языке: {lang_name}.
-2. Верни чистый JSON-объект без оберток со следующими ключами:
+1. Язык: СТРОГО на {lang_name}.
+2. Верни чистый JSON без маркдаун-оберток ```json со следующими ключами:
 {{
-  "verdict": "Краткий емкий вывод (2 предложения), почему именно этот ролик выстрелил и занял высокое место.",
-  "hook_analysis": "Разбор кликабельности заголовка и формулировки темы (интрига, триггеры, контраст).",
-  "trend_alignment": "Оседланный тренд или инфоповод (почему тема горячая).",
-  "engagement_factor": "Оценка отклика аудитории на основе просмотров, скорости и ER.",
-  "actionable_takeaway": "Практический совет: что автор может повторить на своем канале."
+  "verdict": "Глубокий экспертный вердикт (2-3 емких предложения): какая конкретная формула клика и психология зрительского голода обеспечила отрыв в {outlier}x от нормы канала.",
+  "hook_analysis": "Деконструкция заголовка и хука: триггерные слова, контраст, градус интриги, почему зритель не смог пройти мимо.",
+  "trend_alignment": "Оседланный тренд: какой инфоповод, релиз или боль ниши оседлал ролик, и сколько продлится окно актуальности темы.",
+  "actionable_takeaway": "Тактический совет для автора (2 пункта): 1) Какую тему/угол снять прямо сейчас (окно возможностей 48-72ч); 2) Готовая формула цепляющего заголовка для моделирования."
 }}
+3. Никакой воды, шаблонных советов («делайте превью», «хороший контент»). Только глубокий продюсерский разбор.
 """
-        response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=1500, temperature=0.2)
+        response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=1500, temperature=0.25)
         if response_text:
             try:
                 clean_json = re.sub(r"^```(?:json)?\s*", "", response_text.strip())
@@ -152,7 +152,7 @@ class GeminiService:
             except Exception as e:
                 logger.warning(f"Error parsing Gemini JSON: {e}")
 
-        return cls._rule_based_explanation(video_data, target_language)
+        return cls._rule_based_explanation(target_video, target_language)
 
     @classmethod
     def generate_daily_digest(
@@ -166,6 +166,7 @@ class GeminiService:
     ) -> str:
         """Generate executive AI daily digest tailored to user's channel set and language."""
         lang_name = LANGUAGE_PROMPT_NAMES.get(target_language, "русском (Russian)")
+        current_date = datetime.now().strftime("%d.%m.%Y")
 
         if not gemini_api_key or not top_videos:
             return cls._rule_based_daily_digest(set_name, channels_summary, top_videos, anomalies, target_language)
@@ -174,42 +175,48 @@ class GeminiService:
             {
                 "title": v.get("title"),
                 "channel": v.get("channel_title"),
-                "views": v.get("view_count"),
+                "views": v.get("view_count", 0),
+                "channel_avg": v.get("channel_avg_views", 0),
                 "outlier_multiplier": f"{v.get('outlier_score', 1.0)}x",
-                "vph": v.get("velocity_vph", 0),
-                "er": f"{v.get('engagement_rate_pct', 0)}%"
+                "velocity_vph": v.get("velocity_vph", 0),
+                "engagement_rate": f"{v.get('engagement_rate_pct', 0)}%"
             }
-            for v in top_videos[:5]
+            for v in top_videos[:10]
         ]
 
         prompt = f"""
-Ты — ведущий YouTube AI-аналитик и стратег платформы.
-Подготовь ежедневный дайджест для владельца тематического набора каналов «{set_name}».
+Ты — первоклассный YouTube-стратег, продюсер вирального контента и главный аналитик платформы YouTube Analytics (уровня команды MrBeast, Colin & Samir, Paddy Galloway).
+Твоя задача — составить бескомпромиссный, глубокий, тактический ежедневный дайджест для автора на основе свежих данных мониторинга.
 
-ДАННЫЕ МОНИТОРИНГА:
+СВОДНЫЕ ДАННЫЕ МОНИТОРИНГА НАБОРА «{set_name}» ({current_date}):
 • Набор каналов: {set_name}
-• Отслеживается каналов: {len(channels_summary)}
-• Аномалии и всплески: {json.dumps(anomalies, ensure_ascii=False) if anomalies else 'Стабильная динамика'}
-• Топ свежих роликов конкурентов с факторным анализом:
+• Отслеживается каналов: {len(channels_summary)} ({", ".join([c.get('title', '') for c in channels_summary[:6]])}...)
+• Аномальные всплески (>1.8x от нормы): {json.dumps(anomalies, ensure_ascii=False) if anomalies else 'Стабильная динамика'}
+• Топ свежих роликов ниши с метриками виральности:
 {json.dumps(top_vids_compact, ensure_ascii=False, indent=2)}
 
-ТРЕБОВАНИЯ:
-1. Напиши весь текст СТРОГО на языке: {lang_name}.
-2. Структура сообщения для Telegram (с эмодзи, выделением жирным):
-📢 Дайджест YouTube Analytics: {set_name}
+СТРОГИЙ ЭТАЛОН СТРУКТУРЫ, ТОНА И ГЛУБИНЫ (ПИШИ ТОЧНО В ЭТОМ СТИЛЕ):
+📢 Ежедневный дайджест YouTube Analytics ({current_date})
 
 📊 Обзор ниши и динамика:
-(2-3 емких предложения о том, какие темы и подходы сейчас растут у конкурентов)
+(Определи, кто из авторов монополизировал повестку и вокруг каких конкретных технологий, моделей, инструментов или инфоповодов. Вскрой психологический голод аудитории — почему они кликают: прямое столкновение титанов, прикладные open-source инструменты, разоблачения, поиск лучшего. Отметь зарождающиеся микротренды с рекордной скоростью набора просмотров VPH).
 
 🔥 Главный прорыв дня:
-(Название топ-ролика, канал, просмотры, Outlier Score. В 2 предложениях объясни, почему тема или заголовок сработали)
+«[Точное название топ-ролика]» — [Канал]
+📈 [Просмотры с запятыми] просмотров (Outlier: [Xx] от нормы, VPH: [VPH]).
+(Деконструируй формулу успеха: назови конкретную психологическую формулу, например «Баттл двух титанов», «FOMO + срочность», «Обличение мифа», разбери триггеры в заголовке («Changes Everything», «Finally», сравнения), эффект новизны и ментальный вопрос зрителя, который закрывает клик).
 
 💡 Стратегический совет (Actionable Takeaway):
-(1-2 конкретных совета: какую тему, хук или формат сейчас стоит внедрить автору)
+• Срочно в производство: [Конкретная концепция ролика для автора: идея темы, гипотеза кликабельного заголовка, хронометраж и окно возможностей, например 24–72 часа].
+• Хук на пользу: [Практический альтернативный план: подборка утилитарных инструментов, прикладные списки или разбор кейса, которые дают конверсию в просмотры свыше 4x от нормы].
 
-Объем — около 120-200 слов. Без лишней воды.
+ПРАВИЛА:
+1. Язык: СТРОГО на {lang_name}.
+2. Никаких шаблонных фраз вроде «делайте качественный контент», «оптимизируйте превью», «ролик набрал просмотры благодаря интересу».
+3. Используй конкретные имена, названия инструментов, цифры VPH и множители Outlier из данных.
+4. Выдавай готовые формулировки заголовков и гипотез для автора.
 """
-        response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=2500, temperature=0.4)
+        response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=3000, temperature=0.35)
         if response_text:
             return response_text
 
@@ -233,7 +240,7 @@ class GeminiService:
             }
 
         prompt = f"""
-Ты — персональный YouTube AI-аналитик. Ответь на вопрос пользователя на основе предоставленных данных о видео конкурентов.
+Ты — персональный YouTube AI-аналитик и виральный стратег. Ответь на вопрос пользователя на основе предоставленных данных о видео конкурентов.
 
 ВОПРОС ПОЛЬЗОВАТЕЛЯ: "{query}"
 
@@ -242,7 +249,7 @@ class GeminiService:
 
 ТРЕБОВАНИЯ:
 1. Ответь СТРОГО на языке: {lang_name}.
-2. Дай четкий практический ответ со ссылкой на конкретные названия видео и цифры.
+2. Дай четкий практический ответ со ссылкой на конкретные названия видео, каналы, формулы заголовков и цифры (Outlier, VPH).
 3. Верни чистый JSON следующего вида:
 {{
   "answer": "Развернутый ответ эксперта (2-3 абзаца)",
@@ -260,7 +267,7 @@ class GeminiService:
                 return {"answer": response_text, "key_findings": []}
 
         return {
-            "answer": "Не удалось получить ответ от Gemini API. Проверьте актуальность вашего API-ключа.",
+            "answer": "Не удалось сформировать ответ. Проверьте валидность Gemini API ключа.",
             "key_findings": []
         }
 
@@ -268,17 +275,16 @@ class GeminiService:
     def _rule_based_explanation(video_data: Dict[str, Any], target_language: str) -> Dict[str, Any]:
         title = video_data.get("title", "")
         ch_title = video_data.get("channel_title", "Channel")
-        views = video_data.get("view_count", 0)
-        avg = int(video_data.get("channel_avg_views") or views)
+        views = int(video_data.get("view_count") or 0)
+        avg = int(video_data.get("channel_avg_views") or views or 1)
         outlier = video_data.get("outlier_score", 1.0)
         vph = video_data.get("velocity_vph", 0.0)
 
         return {
-            "verdict": f"Ролик «{title}» ({ch_title}) набрал {views:,} просмотров ({outlier}x от нормы канала {avg:,}). Высокий темп и вовлеченность позволили ролику занять лидирующие позиции.",
-            "hook_analysis": "Заголовок четко бьет в актуальную проблему целевой аудитории с сильной интригой.",
-            "trend_alignment": "Тематика попала в актуальный поисковый интерес пользователей.",
-            "engagement_factor": f"Темп набора составляет {vph} просмотров в час при стабильном отклике аудитории.",
-            "actionable_takeaway": "Снимите ролик-ответ или разбор похожей темы с фокусом на практическую пользу в заголовке."
+            "verdict": f"Ролик «{title}» ({ch_title}) показал взрывной Outlier Score {outlier}x, набрав {views:,} просмотров при норме канала {avg:,}. Сработала формула высокой интриги в заголовке в сочетании с высоким темпом {vph} VPH.",
+            "hook_analysis": "Заголовок использует мощный триггер любопытства и эффект срочности, заставляя целевую аудиторию кликать в поисках ответа на ключевой вопрос ниши.",
+            "trend_alignment": "Тема ролика идеально оседлала пик поискового спроса и волну обсуждений текущей недели с окном возможностей 48–72 часа.",
+            "actionable_takeaway": f"1) Срочно в производство: Снять ролик-ответ или практический бенчмарк по теме «{title[:40]}...»; 2) Формула заголовка: «[Новинка / Модель] vs [Альтернатива]: Всё изменилось...»."
         }
 
     @staticmethod
@@ -289,22 +295,29 @@ class GeminiService:
         anomalies: List[str],
         target_language: str
     ) -> str:
+        current_date = datetime.now().strftime("%d.%m.%Y")
         lines = [
-            f"📢 **Дайджест YouTube Analytics: {set_name}**\n",
-            f"• Отслеживается каналов: **{len(channels_summary)}**",
-            f"• Статус сбора метрик: **Успешно**\n"
+            f"📢 **Ежедневный дайджест YouTube Analytics ({current_date})**\n",
+            "📊 **Обзор ниши и динамика:**"
         ]
         if top_videos:
             best = top_videos[0]
-            lines.append("🔥 **Главный прорыв:**")
-            lines.append(f"• «{best.get('title')}» ({best.get('channel_title')})")
-            lines.append(f"  Просмотры: **{best.get('view_count', 0):,}** | Темп: **{int(best.get('velocity_vph', 0))} просм/ч** | Outlier: **{best.get('outlier_score', 1.0)}x**\n")
+            top_channel = best.get("channel_title", "Лидер")
+            vph = best.get("velocity_vph", 0)
+            outlier = best.get("outlier_score", 1.0)
+            views = best.get("view_count", 0)
 
-        if anomalies:
-            lines.append("⚡ **Аномалии роста:**")
-            for a in anomalies[:3]:
-                lines.append(f"• {a}")
-            lines.append("")
+            lines.append(f"Повестку ниши «{set_name}» возглавляет канал **{top_channel}**, показав резкий всплеск вовлеченности аудитории. Зрители демонстрируют высокий интерес к свежим темам с темпом до **{int(vph)} VPH**. При этом фиксируется повышенный спрос на прикладные разборы и сравнительные тесты лидеров сегмента.\n")
 
-        lines.append("💡 **Совет:** Публикуйте ролики по горячим инфоповодам в первые 24-48 часов.")
+            lines.append("🔥 **Главный прорыв дня:**")
+            lines.append(f"«{best.get('title')}» — {top_channel}")
+            lines.append(f"📈 **{views:,}** просмотров (Outlier: **{outlier}x**, VPH: **{int(vph)}**).")
+            lines.append("Сработала связка сильного триггера новизны и точного попадания в поисковый спрос ниши. Аудитория активно кликает на ролики, дающие мгновенный ответ на главный вопрос текущей недели.\n")
+
+            lines.append("💡 **Стратегический совет (Actionable Takeaway):**")
+            lines.append(f"• **Срочно в производство:** Выпустить ролик-реакцию или бенчмарк по теме «{best.get('title', '')[:45]}...». Окно максимальной конверсии — 48–72 часа.")
+            lines.append("• **Хук на пользу:** Если нет ресурсов на большой тест — подготовьте прикладную подборку «Топ-5 практических решений / связок», утилитарные списки стабильно показывают конверсию в просмотры свыше 4x от нормы.")
+        else:
+            lines.append(f"Мониторинг набора «{set_name}» активен ({len(channels_summary)} каналов). Добавьте каналы или запустите синхронизацию.")
+
         return "\n".join(lines)
