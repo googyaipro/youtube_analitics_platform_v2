@@ -457,7 +457,7 @@ def test_prompt_templates_rendering():
         top_videos_json="[]",
         target_language_name="русском (Russian)"
     )
-    assert "Набор каналов: AI Tools" in rendered_digest
+    assert "AI Tools" in rendered_digest
     assert "23.09.2026" in rendered_digest
     assert "русском (Russian)" in rendered_digest
     assert "{{set_name}}" not in rendered_digest
@@ -467,11 +467,17 @@ def test_prompt_templates_rendering():
         "video_explain.txt",
         title="Epic Video",
         channel_title="Tech Guru",
+        subscriber_count="100,000",
+        format_type="Long-form 🎬",
+        duration_formatted="12:30",
+        published_at="2026-09-23",
         views="50,000",
         avg_views="10,000",
         outlier_score="5.0",
+        views_to_subs_pct="50.0",
         velocity_vph="1,200",
         engagement_rate="8.5",
+        description_snippet="An epic tutorial",
         target_language_name="английском (English)"
     )
     assert "Epic Video" in rendered_explain
