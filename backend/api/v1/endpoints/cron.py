@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -25,10 +25,10 @@ def dispatch_hourly_schedules(
     fetches YouTube metrics with user keys, generates multilingual Gemini digests,
     and sends them to connected Telegram chats.
     """
-    expected_secret = settings.TELEGRAM_WEBHOOK_SECRET
-    # If a secret is configured in env, require it when triggered externally
-    if expected_secret and x_cron_secret:
-        if x_cron_secret != expected_secret:
+    expected_secret = settings.CRON_SECRET or settings.TELEGRAM_WEBHOOK_SECRET
+    if expected_secret:
+        if not x_cron_secret or x_cron_secret != expected_secret:
+            logger.warning("Unauthorized cron request: missing or invalid cron secret.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid cron secret")
 
     logger.info("Starting hourly channel sets dispatcher...")
@@ -38,6 +38,10 @@ def dispatch_hourly_schedules(
 
 
 @router.post("/track-competitors", response_model=Dict[str, Any])
-def legacy_track_competitors(db: Session = Depends(get_db)):
+def legacy_track_competitors(
+    x_cron_secret: str = Header(None),
+    db: Session = Depends(get_db)
+):
     """Legacy alias for dispatching schedules."""
-    return SchedulerService.dispatch_scheduled_sets(db=db)
+    return dispatch_hourly_schedules(x_cron_secret=x_cron_secret, db=db)
+

@@ -40,7 +40,9 @@ with col_keys:
                 with st.spinner("Проверка YouTube API ключа..."):
                     try:
                         res = client.verify_key("youtube", yt_input.strip())
-                        if res.get("valid"):
+                        if res.get("is_valid") or res.get("valid"):
+                            user["youtube_api_key_valid"] = True
+                            st.session_state["user"] = user
                             st.success(f"✅ {res.get('message')}")
                         else:
                             st.error(f"❌ {res.get('message')}")
@@ -73,7 +75,9 @@ with col_keys:
                 with st.spinner("Проверка Gemini API ключа..."):
                     try:
                         res = client.verify_key("gemini", gemini_input.strip())
-                        if res.get("valid"):
+                        if res.get("is_valid") or res.get("valid"):
+                            user["gemini_api_key_valid"] = True
+                            st.session_state["user"] = user
                             st.success(f"✅ {res.get('message')}")
                         else:
                             st.error(f"❌ {res.get('message')}")

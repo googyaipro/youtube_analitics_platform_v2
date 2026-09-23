@@ -28,11 +28,14 @@ services:
     environment:
       PORT: 8080
       DATABASE_URL: postgresql://${POSTGRES_USER:-yap_user}:${POSTGRES_PASSWORD:-yap_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-youtube_analytics}
-      SECRET_KEY: ${SECRET_KEY:-c92739f75470d02bce0eb8e652fb6a256a5dbd4e8b35bc2b489d813cbefd6f0b}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-X9s65f-4v-T7t2Zg3B7qjV6G4j0kE9h1pL5y2rA4uB8=}
+      JWT_SECRET: ${JWT_SECRET:-${SECRET_KEY:-change-in-production-jwt-secret-key-32chars-min}}
+      SECRET_KEY: ${SECRET_KEY:-${JWT_SECRET:-change-in-production-jwt-secret-key-32chars-min}}
+      ENCRYPTION_SECRET: ${ENCRYPTION_SECRET:-${ENCRYPTION_KEY:-8vX_8uM_6eN_4rT_2wQ_0zY_9xW_7vU_5sR_3qP_1oN=}}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-${ENCRYPTION_SECRET:-8vX_8uM_6eN_4rT_2wQ_0zY_9xW_7vU_5sR_3qP_1oN=}}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      CRON_SECRET: ${CRON_SECRET:-${TELEGRAM_WEBHOOK_SECRET:-}}
       DOKPLOY_WEB_DOMAIN: ${DOKPLOY_WEB_DOMAIN:-yap.oxyjet.win}
       DOKPLOY_API_DOMAIN: ${DOKPLOY_API_DOMAIN:-api.yap.oxyjet.win}
     depends_on:

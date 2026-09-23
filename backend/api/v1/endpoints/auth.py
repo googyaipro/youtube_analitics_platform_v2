@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -97,13 +98,28 @@ def get_profile(current_user: User = Depends(get_current_user)):
     )
 
 
+from pydantic import BaseModel
+
+
+class LanguageUpdateRequest(BaseModel):
+    language: str
+
+
 @router.put("/me/language")
-def update_language(language: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.patch("/me/language")
+def update_language(
+    payload: Optional[LanguageUpdateRequest] = None,
+    language: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Update preferred interface and report language (ru, en, de, fi, ka)."""
-    lang_clean = language.strip().lower()
+    raw_lang = (payload.language if payload else language) or ""
+    lang_clean = raw_lang.strip().lower()
     if lang_clean not in ("ru", "en", "de", "fi", "ka"):
         raise HTTPException(status_code=400, detail="Supported languages: ru, en, de, fi, ka")
 
     current_user.language = lang_clean
     db.commit()
     return {"status": "SUCCESS", "language": lang_clean}
+

@@ -28,18 +28,24 @@ class AnalyticsService:
 
         # Cross-dialect ANSI SQL query for PostgreSQL & SQLite (3.25+)
         sql = f"""
-            WITH ranked_videos AS (
+            WITH ranked_snapshots AS (
                 SELECT 
                     id, user_id, set_id, video_id, channel_id, channel_title,
                     title, description, view_count, like_count, comment_count,
                     duration, thumbnail_url, published_at, extracted_at,
-                    ROUND(AVG(view_count) OVER(PARTITION BY channel_id), 0) AS channel_avg_views,
                     ROW_NUMBER() OVER(PARTITION BY video_id ORDER BY extracted_at DESC) as rn
                 FROM video_metrics
                 WHERE user_id = :user_id AND set_id = :set_id {channel_filter}
+            ),
+            latest_videos AS (
+                SELECT * FROM ranked_snapshots WHERE rn = 1
             )
-            SELECT * FROM ranked_videos
-            WHERE rn = 1
+            SELECT 
+                id, user_id, set_id, video_id, channel_id, channel_title,
+                title, description, view_count, like_count, comment_count,
+                duration, thumbnail_url, published_at, extracted_at,
+                ROUND(AVG(view_count) OVER(PARTITION BY channel_id), 0) AS channel_avg_views
+            FROM latest_videos
             ORDER BY view_count DESC
             LIMIT :limit;
         """

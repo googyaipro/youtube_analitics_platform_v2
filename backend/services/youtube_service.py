@@ -73,6 +73,14 @@ class YouTubeService:
 
         return None
 
+    @classmethod
+    def get_channel_details(cls, query_or_handle: str, api_key: str) -> Optional[Dict[str, Any]]:
+        """Resolve channel identifier (handle/URL/ID) and fetch full channel details."""
+        channel_id = cls.resolve_channel_id(query_or_handle, api_key)
+        if not channel_id:
+            return None
+        return cls.get_channel_info(channel_id, api_key)
+
     @staticmethod
     def get_channel_info(channel_id: str, api_key: str) -> Optional[Dict[str, Any]]:
         """Fetch channel details (snippet + statistics) using 1 quota unit."""

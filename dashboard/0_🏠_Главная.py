@@ -86,7 +86,8 @@ with col_btn:
                 with st.spinner(t("syncing")):
                     try:
                         res = client.sync_channel_set(selected_set_id)
-                        st.success(f"{t('sync_success')} ({res.get('snapshots_saved', 0)} видео)")
+                        synced_count = res.get('snapshots_synced', res.get('snapshots_saved', 0))
+                        st.success(f"{t('sync_success')} ({synced_count} видео)")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Sync error: {e}")

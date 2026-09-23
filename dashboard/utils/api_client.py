@@ -46,8 +46,9 @@ class APIClient:
 
     def update_user_language(self, language: str) -> Dict[str, Any]:
         url = f"{self.base_url}/auth/me/language"
-        resp = requests.patch(url, json={"language": language}, headers=self._headers(), timeout=10)
+        resp = requests.put(url, json={"language": language}, params={"language": language}, headers=self._headers(), timeout=10)
         return resp.json() if resp.status_code == 200 else {}
+
 
     # --- Profile & BYOK Keys ---
     def update_user_keys(self, youtube_key: Optional[str] = None, gemini_key: Optional[str] = None) -> Dict[str, Any]:

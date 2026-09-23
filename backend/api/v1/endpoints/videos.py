@@ -121,7 +121,7 @@ def explain_video(
 
     gemini_key = decrypt_secret(current_user.gemini_api_key_encrypted)
     explanation = GeminiService.explain_video_success(
-        video=target_video,
+        video_data=target_video,
         target_language=current_user.language or "ru",
         gemini_api_key=gemini_key
     )

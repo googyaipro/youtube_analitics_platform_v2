@@ -56,14 +56,16 @@ else:
         st.markdown("---")
         st.subheader("🎯 Матрица виральности: Просмотры vs Множитель нормы (Outlier Score)")
         df_v = pd.DataFrame(videos)
+        df_v["bubble_size"] = pd.to_numeric(df_v.get("velocity_vph", 1.0), errors="coerce").fillna(1.0).clip(lower=1.0)
         
         fig_scatter = px.scatter(
             df_v,
             x="view_count",
             y="outlier_score",
-            size="velocity_vph",
+            size="bubble_size",
             color="channel_title",
             hover_name="title",
+            hover_data={"bubble_size": False, "velocity_vph": True},
             labels={
                 "view_count": "Просмотры",
                 "outlier_score": "Множитель к средней норме автора",

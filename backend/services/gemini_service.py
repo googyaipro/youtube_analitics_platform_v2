@@ -86,23 +86,25 @@ class GeminiService:
     @classmethod
     def explain_video_success(
         cls,
-        video_data: Dict[str, Any],
+        video_data: Optional[Dict[str, Any]] = None,
         target_language: str = "ru",
-        gemini_api_key: Optional[str] = None
+        gemini_api_key: Optional[str] = None,
+        video: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Explain why a specific video outperformed channel averages."""
-        title = video_data.get("title", "")
-        ch_title = video_data.get("channel_title", "Channel")
-        views = video_data.get("view_count", 0)
-        avg_views = video_data.get("channel_avg_views") or views
-        outlier = video_data.get("outlier_score", 1.0)
-        vph = video_data.get("velocity_vph", 0.0)
-        er = video_data.get("engagement_rate_pct", 0.0)
+        target_video = video_data or video or {}
+        title = target_video.get("title", "")
+        ch_title = target_video.get("channel_title", "Channel")
+        views = target_video.get("view_count", 0)
+        avg_views = target_video.get("channel_avg_views") or views
+        outlier = target_video.get("outlier_score", 1.0)
+        vph = target_video.get("velocity_vph", 0.0)
+        er = target_video.get("engagement_rate_pct", 0.0)
 
         lang_name = LANGUAGE_PROMPT_NAMES.get(target_language, "русском (Russian)")
 
         if not gemini_api_key:
-            return cls._rule_based_explanation(video_data, target_language)
+            return cls._rule_based_explanation(target_video, target_language)
 
         prompt = f"""
 Ты — профессиональный YouTube AI-аналитик и виральный стратег.

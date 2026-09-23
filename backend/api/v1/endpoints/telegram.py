@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
 import httpx
 from sqlalchemy.orm import Session
@@ -37,9 +37,9 @@ async def telegram_webhook(
     3. Responds 200 OK immediately (< 20ms) to Telegram servers.
     """
     expected_secret = settings.TELEGRAM_WEBHOOK_SECRET
-    if expected_secret and x_telegram_bot_api_secret_token:
-        if x_telegram_bot_api_secret_token != expected_secret:
-            logger.warning("Unauthorized webhook request: Invalid secret token.")
+    if expected_secret:
+        if not x_telegram_bot_api_secret_token or x_telegram_bot_api_secret_token != expected_secret:
+            logger.warning("Unauthorized webhook request: missing or invalid secret token.")
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     try:
@@ -52,8 +52,12 @@ async def telegram_webhook(
 
 
 @router.post("/setup-webhook")
-def setup_webhook():
+def setup_webhook(x_admin_secret: Optional[str] = Header(None)):
     """Register Dokploy webhook URL with Telegram Bot API."""
+    expected_admin = settings.ADMIN_SECRET or settings.CRON_SECRET or settings.TELEGRAM_WEBHOOK_SECRET
+    if expected_admin and x_admin_secret != expected_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden: Admin secret required")
+
     bot_token = settings.TELEGRAM_BOT_TOKEN
     if not bot_token or " " in bot_token:
         raise HTTPException(status_code=400, detail="TELEGRAM_BOT_TOKEN is not configured")
@@ -70,3 +74,4 @@ def setup_webhook():
             return res.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to register webhook with Telegram: {e}")
+
