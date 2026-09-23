@@ -6,8 +6,14 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
-FALLBACK_MODEL_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+PRIMARY_GEMINI_MODEL = "gemini-3.8-flash"
+FALLBACK_GEMINI_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+]
+GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{PRIMARY_GEMINI_MODEL}:generateContent"
 
 LANGUAGE_PROMPT_NAMES = {
     "ru": "русском (Russian)",
@@ -31,19 +37,26 @@ class GeminiService:
             "generationConfig": {"maxOutputTokens": 10}
         }
 
+        last_error = "Unknown error"
         try:
             with httpx.Client(timeout=10.0) as client:
-                res = client.post(f"{GEMINI_API_URL}?key={clean_key}", json=body)
-                if res.status_code == 200:
-                    return True, "Gemini API key is valid and connected successfully."
-                elif res.status_code == 404:
-                    # Try fallback model
-                    res2 = client.post(f"{FALLBACK_MODEL_URL}?key={clean_key}", json=body)
-                    if res2.status_code == 200:
-                        return True, "Gemini API key is valid (using Gemini 1.5 Flash)."
-                
-                error_msg = res.json().get("error", {}).get("message", f"HTTP {res.status_code}")
-                return False, f"Gemini Error: {error_msg}"
+                for model in FALLBACK_GEMINI_MODELS:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={clean_key}"
+                    res = client.post(url, json=body)
+                    if res.status_code == 200:
+                        return True, f"Gemini API key is valid and connected successfully ({model})."
+
+                    err_json = {}
+                    try:
+                        err_json = res.json().get("error", {})
+                    except Exception:
+                        pass
+                    last_error = err_json.get("message", f"HTTP {res.status_code}")
+                    # If authentication or key is explicitly invalid, stop trying
+                    if res.status_code in (401, 403) or "API_KEY_INVALID" in str(err_json) or "API key not valid" in last_error:
+                        return False, f"Gemini Error: {last_error}"
+
+                return False, f"Gemini Error: {last_error}"
         except Exception as e:
             logger.error(f"Error testing Gemini key: {e}")
             return False, f"Network error connecting to Gemini API: {e}"
@@ -64,20 +77,20 @@ class GeminiService:
 
         try:
             with httpx.Client(timeout=30.0) as client:
-                res = client.post(f"{GEMINI_API_URL}?key={api_key.strip()}", json=body)
-                if res.status_code != 200:
-                    # Try fallback model
-                    res = client.post(f"{FALLBACK_MODEL_URL}?key={api_key.strip()}", json=body)
-                
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts:
-                            return parts[0].get("text", "").strip()
-                else:
-                    logger.error(f"Gemini API returned error {res.status_code}: {res.text}")
+                for model in FALLBACK_GEMINI_MODELS:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key.strip()}"
+                    res = client.post(url, json=body)
+                    if res.status_code == 200:
+                        data = res.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts:
+                                return parts[0].get("text", "").strip()
+                    else:
+                        logger.warning(f"Gemini model {model} returned {res.status_code}: {res.text[:200]}")
+                        if res.status_code in (401, 403):
+                            break
         except Exception as e:
             logger.error(f"Exception calling Gemini: {e}")
 

@@ -23,7 +23,7 @@ client = get_api_client()
 active_set_id = user.get("active_set_id")
 
 st.title(f"💬 {t('ai_analyst_title')}")
-st.caption(f"{t('ai_analyst_subtitle')} (Gemini 2.5 Flash / Google AI Studio)")
+st.caption(f"{t('ai_analyst_subtitle')} (Gemini 3.8 Flash / Google AI Studio)")
 
 if not user.get("gemini_api_key_valid"):
     st.warning("⚠️ Gemini API Key is required for interactive AI Analyst. Configure it in Profile & API Keys.")

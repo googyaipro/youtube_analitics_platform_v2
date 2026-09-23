@@ -185,7 +185,7 @@ else:
                 explain_key = f"explain_{v['video_id']}"
                 
                 if st.button(f"🔍 Gemini Analysis", key=f"btn_{explain_key}"):
-                    with st.spinner("Analyzing with Gemini 2.5 Flash..."):
+                    with st.spinner("Analyzing with Gemini 3.8 Flash..."):
                         try:
                             res = client.explain_video(v["video_id"], set_id=selected_set_id)
                             st.session_state[explain_key] = res.get("explanation", {})

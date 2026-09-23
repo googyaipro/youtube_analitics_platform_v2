@@ -29,7 +29,7 @@ with col_keys:
     st.subheader("🛠️ Personal API Keys (BYOK)")
     st.info(
         "💡 **Why your own keys?**\n"
-        "1. **Free:** YouTube Data API provides 10,000 units/day for free. Google AI Studio provides Gemini 2.5 Flash for free (15 requests/minute).\n"
+        "1. **Free:** YouTube Data API provides 10,000 units/day for free. Google AI Studio provides Gemini 3.8 Flash for free (15 requests/minute).\n"
         "2. **Secure:** Your keys are encrypted with AES-256 (Fernet) and accessible only within your authenticated account."
     )
 
