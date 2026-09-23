@@ -95,5 +95,20 @@
   "ai_welcome_message": "Hello! I am your YouTube AI Analyst. Ask me anything about your competitors and viral trends in this channel set!\n\nFor example:\n- *Which video formats are currently exhibiting highest velocity?*\n- *Analyze titles and hooks of viral leaders.*\n- *What content topics should I produce based on competitor gaps?*",
   "ai_gemini_key_required": "⚠️ Gemini API Key is required for interactive AI Analyst. Configure it in Profile & API Keys.",
   "ai_analyzing_spinner": "Analyzing with Gemini AI...",
-  "ai_key_takeaways": "📌 Key Takeaways:"
+  "ai_key_takeaways": "📌 Key Takeaways:",
+  "chart_subs_title": "Subscribers by Channel",
+  "chart_subs_label": "Subscribers",
+  "chart_views_title": "Total Views by Channel",
+  "virality_matrix_title": "Virality Matrix: Views vs Outlier Score",
+  "virality_matrix_chart_title": "Outlier Score vs Views (Bubble Size = Velocity VPH)",
+  "viral_threshold_annotation": "Viral Hit Threshold (1.8x)",
+  "channel_sets_header": "Channel Sets",
+  "no_channel_sets_yet": "No channel sets created yet.",
+  "desc_label": "Description",
+  "digest_time_label": "Digest Time",
+  "days_label": "Days",
+  "scheduled_dispatch_label": "Scheduled Dispatch",
+  "set_active_btn": "Set Active",
+  "delete_set_btn": "🗑️ Delete Set",
+  "enter_set_name_error": "Please enter a set name."
 }

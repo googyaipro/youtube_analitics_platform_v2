@@ -95,5 +95,20 @@
   "ai_welcome_message": "Hei! Olen YouTube-tekoälyanalyytikkosi. Kysy minulta mitä vain kilpailijoistasi ja viraaleista trendeistä tässä kanavaryhmässä!\n\nEsimerkiksi:\n- *Mitkä videoformaatit kasvavat tällä hetkellä nopeimmin?*\n- *Analysoi viraalien hittivideoiden otsikot ja koukut.*\n- *Mitä sisältöaiheita minun kannattaisi tuottaa kilpailijoiden puutteiden perusteella?*",
   "ai_gemini_key_required": "⚠️ Interaktiivinen tekoälyanalyytikko vaatii Gemini API -avaimen. Määritä se Profiili ja API -sivulla.",
   "ai_analyzing_spinner": "Analysoidaan Gemini-tekoälyllä...",
-  "ai_key_takeaways": "📌 Keskeiset huomiot:"
+  "ai_key_takeaways": "📌 Keskeiset huomiot:",
+  "chart_subs_title": "Tilaajat kanavittain",
+  "chart_subs_label": "Tilaajat",
+  "chart_views_title": "Katselukerrat kanavittain",
+  "virality_matrix_title": "Viraalisuusmatriisi: Katselut vs Outlier Score",
+  "virality_matrix_chart_title": "Outlier Score vs Katselut (Pisteen koko = VPH-nopeus)",
+  "viral_threshold_annotation": "Viraalihitin kynnys (1.8x)",
+  "channel_sets_header": "Kanavaryhmät",
+  "no_channel_sets_yet": "Kanavaryhmiä ei ole vielä luotu.",
+  "desc_label": "Kuvaus",
+  "digest_time_label": "Koosteen aika",
+  "days_label": "Päivät",
+  "scheduled_dispatch_label": "Ajastettu lähetys",
+  "set_active_btn": "Aseta aktiiviseksi",
+  "delete_set_btn": "🗑️ Poista ryhmä",
+  "enter_set_name_error": "Anna ryhmälle nimi."
 }

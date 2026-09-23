@@ -51,8 +51,9 @@ app = FastAPI(
 
 # CORS configuration
 origins = list(settings.CORS_ORIGINS)
-if "https://yap.oxyjet.win" not in origins:
-    origins.append("https://yap.oxyjet.win")
+dash_url = settings.DASHBOARD_URL.rstrip("/")
+if dash_url and dash_url not in origins:
+    origins.append(dash_url)
 if "http://localhost:8501" not in origins:
     origins.append("http://localhost:8501")
 

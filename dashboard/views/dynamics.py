@@ -44,8 +44,8 @@ else:
             x="title",
             y="subscriber_count",
             color="subscriber_count",
-            title="Subscribers by Channel",
-            labels={"title": "Channel", "subscriber_count": "Subscribers"},
+            title=t("chart_subs_title"),
+            labels={"title": t("channel_title"), "subscriber_count": t("chart_subs_label")},
             color_continuous_scale="Blues"
         )
         st.plotly_chart(fig_subs, use_container_width=True)
@@ -56,8 +56,8 @@ else:
             x="title",
             y="view_count",
             color="view_count",
-            title="Total Views by Channel",
-            labels={"title": "Channel", "view_count": t("views")},
+            title=t("chart_views_title"),
+            labels={"title": t("channel_title"), "view_count": t("views")},
             color_continuous_scale="Teal"
         )
         st.plotly_chart(fig_views, use_container_width=True)
@@ -65,7 +65,7 @@ else:
     # 2. Virality Matrix (Scatter plot)
     if videos:
         st.markdown("---")
-        st.subheader("🎯 Virality Matrix: Views vs Outlier Score")
+        st.subheader(f"🎯 {t('virality_matrix_title')}")
         df_v = pd.DataFrame(videos)
         df_v["bubble_size"] = pd.to_numeric(df_v.get("velocity_vph", 1.0), errors="coerce").fillna(1.0).clip(lower=1.0)
         
@@ -83,9 +83,9 @@ else:
                 "velocity_vph": t("velocity"),
                 "channel_title": t("channel_title")
             },
-            title="Outlier Score vs Views (Bubble Size = Velocity VPH)"
+            title=t("virality_matrix_chart_title")
         )
-        fig_scatter.add_hline(y=1.8, line_dash="dash", line_color="red", annotation_text="Viral Hit Threshold (1.8x)")
+        fig_scatter.add_hline(y=1.8, line_dash="dash", line_color="red", annotation_text=t("viral_threshold_annotation"))
         st.plotly_chart(fig_scatter, use_container_width=True)
 
     # 3. Channels Table

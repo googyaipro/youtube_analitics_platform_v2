@@ -95,5 +95,20 @@
   "ai_welcome_message": "Hallo! Ich bin Ihr YouTube-KI-Analyst. Fragen Sie mich alles über Ihre Konkurrenten und virale Trends in diesem Kanal-Set!\n\nZum Beispiel:\n- *Welche Videoformate weisen derzeit die höchste Zuwachsrate auf?*\n- *Analysiere Titel und Hooks der viralen Spitzenreiter.*\n- *Welche Themen sollte ich basierend auf Lücken der Konkurrenz produzieren?*",
   "ai_gemini_key_required": "⚠️ Für den interaktiven KI-Analysten ist ein Gemini-API-Schlüssel erforderlich. Konfigurieren Sie ihn unter Profil & API.",
   "ai_analyzing_spinner": "Analysiere mit Gemini KI...",
-  "ai_key_takeaways": "📌 Wichtigste Erkenntnisse:"
+  "ai_key_takeaways": "📌 Wichtigste Erkenntnisse:",
+  "chart_subs_title": "Abonnenten nach Kanal",
+  "chart_subs_label": "Abonnenten",
+  "chart_views_title": "Gesamtaufrufe nach Kanal",
+  "virality_matrix_title": "Viralitätsmatrix: Aufrufe vs Outlier Score",
+  "virality_matrix_chart_title": "Outlier Score vs Aufrufe (Punktgröße = VPH-Geschwindigkeit)",
+  "viral_threshold_annotation": "Schwelle für viralen Hit (1.8x)",
+  "channel_sets_header": "Kanal-Sets",
+  "no_channel_sets_yet": "Noch keine Kanal-Sets erstellt.",
+  "desc_label": "Beschreibung",
+  "digest_time_label": "Digest-Zeit",
+  "days_label": "Tage",
+  "scheduled_dispatch_label": "Geplanter Versand",
+  "set_active_btn": "Als aktiv setzen",
+  "delete_set_btn": "🗑️ Set löschen",
+  "enter_set_name_error": "Bitte geben Sie einen Namen für das Set ein."
 }

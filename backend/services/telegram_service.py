@@ -176,6 +176,8 @@ class TelegramService:
                     link_code_candidate = clean
                     break
 
+        dash_url = settings.DASHBOARD_URL.rstrip("/")
+
         if link_code_candidate:
             target_user = db.query(User).filter(User.telegram_link_code == link_code_candidate).first()
             if target_user:
@@ -186,11 +188,11 @@ class TelegramService:
                 db.commit()
                 cls.send_message(
                     chat_id,
-                    f"🎉 **Аккаунт успешно привязан!**\n\nДобро пожаловать, **{target_user.email}**!\nТеперь вам будут приходить персональные дайджесты по вашим наборам каналов с сайта [yap.oxyjet.win](https://yap.oxyjet.win).\n\nИспользуйте команду /help для списка возможностей."
+                    f"🎉 **Аккаунт успешно привязан!**\n\nДобро пожаловать, **{target_user.email}**!\nТеперь вам будут приходить персональные дайджесты по вашим наборам каналов с платформы [{dash_url}]({dash_url}).\n\nИспользуйте команду /help для списка возможностей."
                 )
                 return True
             else:
-                cls.send_message(chat_id, "⚠️ Код привязки устарел или недействителен. Сгенерируйте новую ссылку в личном кабинете на yap.oxyjet.win.")
+                cls.send_message(chat_id, f"⚠️ Код привязки устарел или недействителен. Сгенерируйте новую ссылку в личном кабинете на {dash_url}.")
                 return True
 
         # If user is not yet bound
@@ -198,13 +200,13 @@ class TelegramService:
             if text.startswith("/start"):
                 cls.send_message(
                     chat_id,
-                    "👋 Привет! Чтобы связать этого бота с вашим аккаунтом на платформе аналитики:\n1. Зайдите в профиль на **https://yap.oxyjet.win**\n2. Нажмите кнопку **«Привязать Telegram»**\n3. Перейдите по ссылке или отправьте полученный 16-значный код прямо сюда в чат."
+                    f"👋 Привет! Чтобы связать этого бота с вашим аккаунтом на платформе аналитики:\n1. Зайдите в профиль на **{dash_url}**\n2. Нажмите кнопку **«Привязать Telegram»**\n3. Перейдите по ссылке или отправьте полученный 16-значный код прямо сюда в чат."
                 )
                 return True
 
             cls.send_message(
                 chat_id,
-                "🔒 Ваш Telegram-аккаунт еще не привязан к личному кабинету.\nАвторизуйтесь на **https://yap.oxyjet.win**, нажмите «Привязать Telegram» в настройках профиля и отправьте сюда 16-значный код привязки."
+                f"🔒 Ваш Telegram-аккаунт еще не привязан к личному кабинету.\nАвторизуйтесь на **{dash_url}**, нажмите «Привязать Telegram» в настройках профиля и отправьте сюда 16-значный код привязки."
             )
             return True
 
@@ -224,7 +226,7 @@ class TelegramService:
                 "• /sets — Просмотр и выбор активного набора каналов\n"
                 "• /lang <ru|en|de|fi|ka> — Смена языка аналитики\n"
                 "• /status — Проверка статуса API-ключей и расписания\n\n"
-                "🌐 Личный кабинет: [yap.oxyjet.win](https://yap.oxyjet.win)"
+                f"🌐 Личный кабинет: [{dash_url}]({dash_url})"
             )
             return True
 
@@ -238,7 +240,7 @@ class TelegramService:
                     active_set_id = first_set.id
 
             if not active_set_id:
-                cls.send_message(chat_id, "❌ У вас нет активных наборов каналов. Создайте набор на yap.oxyjet.win.")
+                cls.send_message(chat_id, f"❌ У вас нет активных наборов каналов. Создайте набор на {dash_url}.")
                 return True
 
             active_set = db.query(ChannelSet).filter(ChannelSet.id == active_set_id).first()
@@ -268,7 +270,7 @@ class TelegramService:
         elif text == "/sets":
             sets = db.query(ChannelSet).filter(ChannelSet.user_id == user.id).all()
             if not sets:
-                cls.send_message(chat_id, "У вас пока нет созданных наборов каналов. Создайте первый набор в дашборде на yap.oxyjet.win.")
+                cls.send_message(chat_id, f"У вас пока нет созданных наборов каналов. Создайте первый набор в дашборде на {dash_url}.")
                 return True
             lines = ["📁 **Ваши наборы каналов:**"]
             for idx, s in enumerate(sets, 1):
@@ -320,13 +322,13 @@ class TelegramService:
                     active_set_id = first_set.id
 
             if not active_set_id:
-                cls.send_message(chat_id, "❌ У вас нет активных наборов каналов. Создайте набор на yap.oxyjet.win.")
+                cls.send_message(chat_id, f"❌ У вас нет активных наборов каналов. Создайте набор на {dash_url}.")
                 return True
 
             active_set = db.query(ChannelSet).filter(ChannelSet.id == active_set_id).first()
             videos = AnalyticsService.get_set_enriched_videos(db, user.id, active_set_id, limit=10)
             if not videos:
-                cls.send_message(chat_id, f"В наборе «{active_set.name}» пока нет собранных роликов. Добавьте каналы на yap.oxyjet.win или запустите синхронизацию.")
+                cls.send_message(chat_id, f"В наборе «{active_set.name}» пока нет собранных роликов. Добавьте каналы на {dash_url} или запустите синхронизацию.")
                 return True
 
             lines = [f"🏆 **Топ видео набора «{active_set.name}»:**\n"]
@@ -387,7 +389,7 @@ class TelegramService:
                 f"• Gemini API Key: {gemini_status}\n"
                 f"• Активный набор: **{set_name}**\n"
                 f"• Язык отчетов: **{user.language}**\n\n"
-                f"Управление ключами и наборами: [yap.oxyjet.win](https://yap.oxyjet.win)"
+                f"Управление ключами и наборами: [{dash_url}]({dash_url})"
             )
             return True
 

@@ -24,31 +24,31 @@ st.title(f"⚙️ {t('nav_channel_sets')}")
 st.caption(t("app_tagline"))
 
 channel_sets = client.get_channel_sets()
-tab_sets, tab_channels = st.tabs([f"📁 {t('active_set')} & Scheduler", f"📺 {t('kpi_channels')}"])
+tab_sets, tab_channels = st.tabs([f"📁 {t('nav_channel_sets')}", f"📺 {t('kpi_channels')}"])
 
 # --- TAB 1: Channel Sets & Scheduler ---
 with tab_sets:
     col_list, col_create = st.columns([3, 2])
 
     with col_list:
-        st.subheader("Channel Sets")
+        st.subheader(f"📁 {t('channel_sets_header')}")
         if not channel_sets:
-            st.info("No channel sets created yet.")
+            st.info(t("no_channel_sets_yet"))
         else:
             for s in channel_sets:
                 is_active = s.get("id") == user.get("active_set_id")
-                active_badge = " 🟢 (Active)" if is_active else ""
+                active_badge = f" 🟢 ({t('set_active_btn')})" if is_active else ""
                 
                 with st.expander(f"📁 {s['name']}{active_badge}"):
-                    st.markdown(f"**Description:** {s.get('description') or 'None'}")
-                    st.markdown(f"**⏰ Digest Time:** `{s.get('schedule_time', '12:00')}` ({s.get('schedule_timezone', 'UTC')})")
-                    st.markdown(f"**📅 Days:** `{s.get('schedule_days', 'mon,tue,wed,thu,fri')}`")
-                    st.markdown(f"**Scheduled Dispatch:** {'✅ Enabled' if s.get('schedule_enabled') else '❌ Disabled'}")
+                    st.markdown(f"**{t('desc_label')}:** {s.get('description') or '—'}")
+                    st.markdown(f"**⏰ {t('digest_time_label')}:** `{s.get('schedule_time', '12:00')}` ({s.get('schedule_timezone', 'UTC')})")
+                    st.markdown(f"**📅 {t('days_label')}:** `{s.get('schedule_days', 'mon,tue,wed,thu,fri')}`")
+                    st.markdown(f"**{t('scheduled_dispatch_label')}:** {'✅ ' + t('schedule_enabled') if s.get('schedule_enabled') else '❌'}")
 
                     c_act, c_del = st.columns(2)
                     with c_act:
                         if not is_active:
-                            if st.button("Set Active", key=f"act_{s['id']}", use_container_width=True):
+                            if st.button(t("set_active_btn"), key=f"act_{s['id']}", use_container_width=True):
                                 client.activate_channel_set(s["id"])
                                 user["active_set_id"] = s["id"]
                                 st.session_state["user"] = user
@@ -56,7 +56,7 @@ with tab_sets:
                                 st.rerun()
                     with c_del:
                         if len(channel_sets) > 1:
-                            if st.button("🗑️ Delete Set", key=f"del_{s['id']}", type="secondary", use_container_width=True):
+                            if st.button(t("delete_set_btn"), key=f"del_{s['id']}", type="secondary", use_container_width=True):
                                 client.delete_channel_set(s["id"])
                                 st.success("Set deleted.")
                                 st.rerun()
@@ -88,7 +88,7 @@ with tab_sets:
 
             if submit_set:
                 if not new_name.strip():
-                    st.error("Please enter a set name.")
+                    st.error(t("enter_set_name_error"))
                 else:
                     try:
                         created = client.create_channel_set({
