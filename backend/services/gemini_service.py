@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
+from backend.prompts import render_prompt
+
 logger = logging.getLogger(__name__)
 
 PRIMARY_GEMINI_MODEL = "gemini-3.8-flash"
@@ -120,29 +122,17 @@ class GeminiService:
         if not gemini_api_key:
             return cls._rule_based_explanation(target_video, target_language)
 
-        prompt = f"""
-Ты — профессиональный YouTube-продюсер и виральный стратег топ-уровня (уровня команды MrBeast, Colin & Samir, Paddy Galloway).
-Твоя задача — разложить по косточкам успех видео «{title}» канала «{ch_title}», которое показало взрывной результат в нише.
-
-МЕТРИКИ РОЛИКА:
-• Название: "{title}"
-• Канал: "{ch_title}"
-• Просмотры: {views:,} (при средней норме канала: {int(avg_views):,})
-• Outlier Score (кратность превышения средней нормы канала): {outlier}x
-• Скорость набора просмотров: {vph} VPH (просмотров в час)
-• Коэффициент вовлеченности (ER): {er}%
-
-ТРЕБОВАНИЯ:
-1. Язык: СТРОГО на {lang_name}.
-2. Верни чистый JSON без маркдаун-оберток ```json со следующими ключами:
-{{
-  "verdict": "Глубокий экспертный вердикт (2-3 емких предложения): какая конкретная формула клика и психология зрительского голода обеспечила отрыв в {outlier}x от нормы канала.",
-  "hook_analysis": "Деконструкция заголовка и хука: триггерные слова, контраст, градус интриги, почему зритель не смог пройти мимо.",
-  "trend_alignment": "Оседланный тренд: какой инфоповод, релиз или боль ниши оседлал ролик, и сколько продлится окно актуальности темы.",
-  "actionable_takeaway": "Тактический совет для автора (2 пункта): 1) Какую тему/угол снять прямо сейчас (окно возможностей 48-72ч); 2) Готовая формула цепляющего заголовка для моделирования."
-}}
-3. Никакой воды, шаблонных советов («делайте превью», «хороший контент»). Только глубокий продюсерский разбор.
-"""
+        prompt = render_prompt(
+            "video_explain.txt",
+            title=title,
+            channel_title=ch_title,
+            views=f"{views:,}",
+            avg_views=f"{int(avg_views):,}",
+            outlier_score=outlier,
+            velocity_vph=vph,
+            engagement_rate=er,
+            target_language_name=lang_name,
+        )
         response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=1500, temperature=0.25)
         if response_text:
             try:
@@ -184,38 +174,20 @@ class GeminiService:
             for v in top_videos[:10]
         ]
 
-        prompt = f"""
-Ты — первоклассный YouTube-стратег, продюсер вирального контента и главный аналитик платформы YouTube Analytics (уровня команды MrBeast, Colin & Samir, Paddy Galloway).
-Твоя задача — составить бескомпромиссный, глубокий, тактический ежедневный дайджест для автора на основе свежих данных мониторинга.
+        channels_list = ", ".join([c.get("title", "") for c in channels_summary[:6]])
+        anomalies_str = json.dumps(anomalies, ensure_ascii=False) if anomalies else "Стабильная динамика"
+        top_vids_str = json.dumps(top_vids_compact, ensure_ascii=False, indent=2)
 
-СВОДНЫЕ ДАННЫЕ МОНИТОРИНГА НАБОРА «{set_name}» ({current_date}):
-• Набор каналов: {set_name}
-• Отслеживается каналов: {len(channels_summary)} ({", ".join([c.get('title', '') for c in channels_summary[:6]])}...)
-• Аномальные всплески (>1.8x от нормы): {json.dumps(anomalies, ensure_ascii=False) if anomalies else 'Стабильная динамика'}
-• Топ свежих роликов ниши с метриками виральности:
-{json.dumps(top_vids_compact, ensure_ascii=False, indent=2)}
-
-СТРОГИЙ ЭТАЛОН СТРУКТУРЫ, ТОНА И ГЛУБИНЫ (ПИШИ ТОЧНО В ЭТОМ СТИЛЕ):
-📢 Ежедневный дайджест YouTube Analytics ({current_date})
-
-📊 Обзор ниши и динамика:
-(Определи, кто из авторов монополизировал повестку и вокруг каких конкретных технологий, моделей, инструментов или инфоповодов. Вскрой психологический голод аудитории — почему они кликают: прямое столкновение титанов, прикладные open-source инструменты, разоблачения, поиск лучшего. Отметь зарождающиеся микротренды с рекордной скоростью набора просмотров VPH).
-
-🔥 Главный прорыв дня:
-«[Точное название топ-ролика]» — [Канал]
-📈 [Просмотры с запятыми] просмотров (Outlier: [Xx] от нормы, VPH: [VPH]).
-(Деконструируй формулу успеха: назови конкретную психологическую формулу, например «Баттл двух титанов», «FOMO + срочность», «Обличение мифа», разбери триггеры в заголовке («Changes Everything», «Finally», сравнения), эффект новизны и ментальный вопрос зрителя, который закрывает клик).
-
-💡 Стратегический совет (Actionable Takeaway):
-• Срочно в производство: [Конкретная концепция ролика для автора: идея темы, гипотеза кликабельного заголовка, хронометраж и окно возможностей, например 24–72 часа].
-• Хук на пользу: [Практический альтернативный план: подборка утилитарных инструментов, прикладные списки или разбор кейса, которые дают конверсию в просмотры свыше 4x от нормы].
-
-ПРАВИЛА:
-1. Язык: СТРОГО на {lang_name}.
-2. Никаких шаблонных фраз вроде «делайте качественный контент», «оптимизируйте превью», «ролик набрал просмотры благодаря интересу».
-3. Используй конкретные имена, названия инструментов, цифры VPH и множители Outlier из данных.
-4. Выдавай готовые формулировки заголовков и гипотез для автора.
-"""
+        prompt = render_prompt(
+            "daily_digest.txt",
+            set_name=set_name,
+            current_date=current_date,
+            channels_count=len(channels_summary),
+            channels_list=channels_list,
+            anomalies_json=anomalies_str,
+            top_videos_json=top_vids_str,
+            target_language_name=lang_name,
+        )
         response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=3000, temperature=0.35)
         if response_text:
             return response_text
@@ -239,23 +211,12 @@ class GeminiService:
                 "key_findings": ["Ключ Gemini не настроен"]
             }
 
-        prompt = f"""
-Ты — персональный YouTube AI-аналитик и виральный стратег. Ответь на вопрос пользователя на основе предоставленных данных о видео конкурентов.
-
-ВОПРОС ПОЛЬЗОВАТЕЛЯ: "{query}"
-
-ДАННЫЕ О ВИДЕО (ТОП 10):
-{json.dumps(videos_context[:10], default=str, ensure_ascii=False, indent=2)}
-
-ТРЕБОВАНИЯ:
-1. Ответь СТРОГО на языке: {lang_name}.
-2. Дай четкий практический ответ со ссылкой на конкретные названия видео, каналы, формулы заголовков и цифры (Outlier, VPH).
-3. Верни чистый JSON следующего вида:
-{{
-  "answer": "Развернутый ответ эксперта (2-3 абзаца)",
-  "key_findings": ["Ключевой инсайт 1", "Ключевой инсайт 2", "Ключевой инсайт 3"]
-}}
-"""
+        prompt = render_prompt(
+            "ask_analyst.txt",
+            query=query,
+            videos_json=json.dumps(videos_context[:10], default=str, ensure_ascii=False, indent=2),
+            target_language_name=lang_name,
+        )
         response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=2048, temperature=0.3)
         if response_text:
             try:

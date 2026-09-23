@@ -442,3 +442,53 @@ def test_admin_endpoints_and_authorization():
         assert r_tg_status.status_code == 200
         assert "bot_token_configured" in r_tg_status.json()
 
+
+def test_prompt_templates_rendering():
+    from backend.prompts import render_prompt, load_prompt
+
+    # 1. Daily digest template
+    rendered_digest = render_prompt(
+        "daily_digest.txt",
+        set_name="AI Tools",
+        current_date="23.09.2026",
+        channels_count=5,
+        channels_list="Channel A, Channel B",
+        anomalies_json="[]",
+        top_videos_json="[]",
+        target_language_name="русском (Russian)"
+    )
+    assert "Набор каналов: AI Tools" in rendered_digest
+    assert "23.09.2026" in rendered_digest
+    assert "русском (Russian)" in rendered_digest
+    assert "{{set_name}}" not in rendered_digest
+
+    # 2. Video explain template
+    rendered_explain = render_prompt(
+        "video_explain.txt",
+        title="Epic Video",
+        channel_title="Tech Guru",
+        views="50,000",
+        avg_views="10,000",
+        outlier_score="5.0",
+        velocity_vph="1,200",
+        engagement_rate="8.5",
+        target_language_name="английском (English)"
+    )
+    assert "Epic Video" in rendered_explain
+    assert "Tech Guru" in rendered_explain
+    assert "5.0x" in rendered_explain
+    assert "английском (English)" in rendered_explain
+    assert "{{title}}" not in rendered_explain
+
+    # 3. Ask analyst template
+    rendered_ask = render_prompt(
+        "ask_analyst.txt",
+        query="What is trending?",
+        videos_json="[]",
+        target_language_name="немецком (German)"
+    )
+    assert "What is trending?" in rendered_ask
+    assert "немецком (German)" in rendered_ask
+    assert "{{query}}" not in rendered_ask
+
+
