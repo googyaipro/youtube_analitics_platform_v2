@@ -53,6 +53,12 @@ pages = [
         icon="🔑",
         url_path="profile",
     ),
+    st.Page(
+        "views/admin.py",
+        title=t("nav_admin"),
+        icon="👑",
+        url_path="admin",
+    ),
 ]
 
 pg = st.navigation(pages)

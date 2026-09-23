@@ -76,5 +76,20 @@
   "nav_dynamics": "Dynamik & Rangliste",
   "nav_ai_analyst": "KI-Analyst",
   "nav_channel_sets": "Kanal-Sets & Zeitplan",
-  "nav_profile": "Profil & API-Schlüssel"
+  "nav_profile": "Profil & API-Schlüssel",
+  "nav_admin": "Admin-Bereich",
+  "admin_title": "Administrator-Konsole",
+  "admin_subtitle": "Benutzerverwaltung, Berechtigungen und Plattformstatus",
+  "admin_claim_title": "Administrator-Autorisierung",
+  "admin_claim_desc": "Geben Sie den ADMIN_SECRET-Schlüssel ein, um Administratorrechte zu erhalten.",
+  "admin_claim_btn": "Administratorrechte anfordern",
+  "admin_stats_users": "Benutzer gesamt",
+  "admin_stats_active": "Aktiv",
+  "admin_stats_blocked": "Gesperrt",
+  "admin_stats_admins": "Admins",
+  "admin_stats_sets": "Kanal-Sets",
+  "admin_stats_channels": "Kanäle",
+  "admin_block_btn": "Sperren",
+  "admin_unblock_btn": "Entsperren",
+  "admin_delete_btn": "Löschen"
 }

@@ -21,11 +21,15 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists.")
 
+    # First user registered in the system automatically gets admin privileges
+    is_first_user = db.query(User).count() == 0
+
     new_user = User(
         email=user_in.email.lower(),
         hashed_password=hash_password(user_in.password),
         full_name=user_in.full_name,
-        language=user_in.language or "en"
+        language=user_in.language or "en",
+        is_admin=is_first_user
     )
     db.add(new_user)
     db.commit()
@@ -34,10 +38,10 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
     # Create default channel set
     default_set = ChannelSet(
         user_id=new_user.id,
-        name="Основной / Primary",
-        description="Мой первый набор отслеживаемых каналов",
+        name="Primary",
+        description="My primary monitored competitor set",
         schedule_time="12:00",
-        schedule_timezone="Europe/Helsinki",
+        schedule_timezone="UTC",
         schedule_enabled=True
     )
     db.add(default_set)
@@ -53,7 +57,8 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
         user_id=new_user.id,
         email=new_user.email,
         language=new_user.language,
-        active_set_id=new_user.active_set_id
+        active_set_id=new_user.active_set_id,
+        is_admin=new_user.is_admin
     )
 
 
@@ -76,7 +81,8 @@ def login(login_in: UserLogin, db: Session = Depends(get_db)):
         user_id=user.id,
         email=user.email,
         language=user.language,
-        active_set_id=user.active_set_id
+        active_set_id=user.active_set_id,
+        is_admin=user.is_admin
     )
 
 
@@ -87,8 +93,10 @@ def get_profile(current_user: User = Depends(get_current_user)):
         id=current_user.id,
         email=current_user.email,
         full_name=current_user.full_name,
-        language=current_user.language or "ru",
+        language=current_user.language or "en",
         active_set_id=current_user.active_set_id,
+        is_active=current_user.is_active,
+        is_admin=current_user.is_admin,
         has_youtube_key=bool(current_user.youtube_api_key_encrypted),
         has_gemini_key=bool(current_user.gemini_api_key_encrypted),
         youtube_api_key_valid=bool(current_user.youtube_api_key_valid),

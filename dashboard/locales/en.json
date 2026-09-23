@@ -76,5 +76,20 @@
   "nav_dynamics": "Dynamics & Leaderboard",
   "nav_ai_analyst": "AI Analyst",
   "nav_channel_sets": "Channel Sets & Schedule",
-  "nav_profile": "Profile & API Keys"
+  "nav_profile": "Profile & API Keys",
+  "nav_admin": "Admin Panel",
+  "admin_title": "Administrator Console",
+  "admin_subtitle": "Manage platform users, permissions, and service health",
+  "admin_claim_title": "Admin Access Authorization",
+  "admin_claim_desc": "Enter the platform ADMIN_SECRET key to grant administrator privileges to your account.",
+  "admin_claim_btn": "Claim Admin Privileges",
+  "admin_stats_users": "Total Users",
+  "admin_stats_active": "Active Users",
+  "admin_stats_blocked": "Blocked",
+  "admin_stats_admins": "Admins",
+  "admin_stats_sets": "Total Sets",
+  "admin_stats_channels": "Total Channels",
+  "admin_block_btn": "Block User",
+  "admin_unblock_btn": "Unblock User",
+  "admin_delete_btn": "Delete User"
 }

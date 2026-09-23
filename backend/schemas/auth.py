@@ -22,6 +22,7 @@ class TokenResponse(BaseModel):
     email: str
     language: str
     active_set_id: Optional[str] = None
+    is_admin: bool = False
 
 
 class UserProfile(BaseModel):
@@ -30,6 +31,8 @@ class UserProfile(BaseModel):
     full_name: Optional[str] = None
     language: str
     active_set_id: Optional[str] = None
+    is_active: bool = True
+    is_admin: bool = False
     
     has_youtube_key: bool
     has_gemini_key: bool

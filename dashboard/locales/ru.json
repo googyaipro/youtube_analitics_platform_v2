@@ -76,5 +76,20 @@
   "nav_dynamics": "Динамика и Лидерборд",
   "nav_ai_analyst": "AI-Аналитик",
   "nav_channel_sets": "Наборы каналов и планировщик",
-  "nav_profile": "Профиль и API ключи"
+  "nav_profile": "Профиль и API ключи",
+  "nav_admin": "Панель администратора",
+  "admin_title": "Панель администратора",
+  "admin_subtitle": "Управление пользователями, правами доступа и мониторинг платформы",
+  "admin_claim_title": "Авторизация администратора",
+  "admin_claim_desc": "Введите системный ключ ADMIN_SECRET для активации прав администратора на ваш аккаунт.",
+  "admin_claim_btn": "Получить права администратора",
+  "admin_stats_users": "Всего пользователей",
+  "admin_stats_active": "Активных",
+  "admin_stats_blocked": "Заблокировано",
+  "admin_stats_admins": "Администраторов",
+  "admin_stats_sets": "Всего наборов",
+  "admin_stats_channels": "Всего каналов",
+  "admin_block_btn": "Заблокировать",
+  "admin_unblock_btn": "Разблокировать",
+  "admin_delete_btn": "Удалить"
 }

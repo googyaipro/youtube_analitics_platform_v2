@@ -303,3 +303,104 @@ def test_api_endpoints_integration():
         res_kpis = client.get("/api/v1/videos/kpis", headers=headers)
         assert res_kpis.status_code == 200
         assert "total_channels" in res_kpis.json()
+
+
+def test_admin_endpoints_and_authorization():
+    from fastapi.testclient import TestClient
+    from backend.main import app
+    from backend.core.database import init_db
+    from config.settings import get_settings
+
+    init_db()
+    settings = get_settings()
+
+    with TestClient(app) as client:
+        ts = int(datetime.now().timestamp())
+        admin_email = f"admin_{ts}@example.com"
+        victim_email = f"victim_{ts}@example.com"
+
+        # Register admin user
+        r_admin = client.post("/api/v1/auth/register", json={
+            "email": admin_email,
+            "password": "AdminPassword123!",
+            "full_name": "Chief Administrator"
+        })
+        assert r_admin.status_code == 201
+        admin_data = r_admin.json()
+        admin_token = admin_data["access_token"]
+        admin_id = admin_data["user_id"]
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+        # Register second regular user
+        r_victim = client.post("/api/v1/auth/register", json={
+            "email": victim_email,
+            "password": "VictimPassword123!",
+            "full_name": "Regular User"
+        })
+        assert r_victim.status_code == 201
+        victim_data = r_victim.json()
+        victim_token = victim_data["access_token"]
+        victim_id = victim_data["user_id"]
+        victim_headers = {"Authorization": f"Bearer {victim_token}"}
+
+        # 1. Non-admin accessing admin endpoints must get 403
+        r_unauth = client.get("/api/v1/admin/stats", headers=victim_headers)
+        assert r_unauth.status_code == 403
+
+        # 2. Regular user claims admin status via admin_secret
+        r_claim = client.post("/api/v1/admin/claim", json={
+            "admin_secret": settings.ADMIN_SECRET
+        }, headers=admin_headers)
+        assert r_claim.status_code == 200
+        assert r_claim.json()["is_admin"] is True
+
+        # 3. Admin stats
+        r_stats = client.get("/api/v1/admin/stats", headers=admin_headers)
+        assert r_stats.status_code == 200
+        stats = r_stats.json()
+        assert stats["total_users"] >= 2
+        assert stats["active_users"] >= 2
+
+        # 4. List users
+        r_users = client.get("/api/v1/admin/users", headers=admin_headers)
+        assert r_users.status_code == 200
+        user_list = r_users.json()
+        emails = [u["email"] for u in user_list]
+        assert admin_email in emails
+        assert victim_email in emails
+
+        # 5. Prevent admin self-blocking or self-deletion
+        r_self_block = client.post(f"/api/v1/admin/users/{admin_id}/toggle-active", headers=admin_headers)
+        assert r_self_block.status_code == 400
+
+        r_self_del = client.delete(f"/api/v1/admin/users/{admin_id}", headers=admin_headers)
+        assert r_self_del.status_code == 400
+
+        # 6. Block victim user
+        r_block = client.post(f"/api/v1/admin/users/{victim_id}/toggle-active", headers=admin_headers)
+        assert r_block.status_code == 200
+        assert r_block.json()["is_active"] is False
+
+        # Verify blocked user cannot log in or make API calls
+        r_victim_call = client.get("/api/v1/auth/me", headers=victim_headers)
+        assert r_victim_call.status_code == 400  # Inactive user
+
+        # 7. Unblock victim user
+        r_unblock = client.post(f"/api/v1/admin/users/{victim_id}/toggle-active", headers=admin_headers)
+        assert r_unblock.status_code == 200
+        assert r_unblock.json()["is_active"] is True
+
+        # 8. Promote victim to admin
+        r_promote = client.post(f"/api/v1/admin/users/{victim_id}/toggle-admin", headers=admin_headers)
+        assert r_promote.status_code == 200
+        assert r_promote.json()["is_admin"] is True
+
+        # 9. Delete victim user
+        r_del = client.delete(f"/api/v1/admin/users/{victim_id}", headers=admin_headers)
+        assert r_del.status_code == 200
+        assert r_del.json()["success"] is True
+
+        # Verify victim no longer exists
+        r_check_del = client.get("/api/v1/admin/users", headers=admin_headers)
+        assert victim_email not in [u["email"] for u in r_check_del.json()]
+

@@ -76,5 +76,20 @@
   "nav_dynamics": "დინამიკა და ლიდერბორდი",
   "nav_ai_analyst": "AI ანალიტიკოსი",
   "nav_channel_sets": "არხების ნაკრებები და განრიგი",
-  "nav_profile": "პროფილი და API გასაღებები"
+  "nav_profile": "პროფილი და API გასაღებები",
+  "nav_admin": "ადმინ პანელი",
+  "admin_title": "ადმინისტრატორის კონსოლი",
+  "admin_subtitle": "მომხმარებლების მართვა, უფლებები და პლატფორმის მონიტორინგი",
+  "admin_claim_title": "ადმინისტრატორის ავტორიზაცია",
+  "admin_claim_desc": "შეიყვანეთ ADMIN_SECRET გასაღები ადმინისტრატორის უფლებების მისაღებად.",
+  "admin_claim_btn": "ადმინის უფლებების მიღება",
+  "admin_stats_users": "სულ მომხმარებლები",
+  "admin_stats_active": "აქტიური",
+  "admin_stats_blocked": "დაბლოკილი",
+  "admin_stats_admins": "ადმინები",
+  "admin_stats_sets": "სულ ნაკრებები",
+  "admin_stats_channels": "სულ არხები",
+  "admin_block_btn": "დაბლოკვა",
+  "admin_unblock_btn": "განბლოკვა",
+  "admin_delete_btn": "წაშლა"
 }

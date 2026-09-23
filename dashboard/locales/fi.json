@@ -76,5 +76,20 @@
   "nav_dynamics": "Dynamiikka & Tulostaulukko",
   "nav_ai_analyst": "Tekoälyanalyytikko",
   "nav_channel_sets": "Kanavaryhmät & Aikataulu",
-  "nav_profile": "Profiili & API-avaimet"
+  "nav_profile": "Profiili & API-avaimet",
+  "nav_admin": "Ylläpitopaneeli",
+  "admin_title": "Ylläpitäjän hallintapaneeli",
+  "admin_subtitle": "Käyttäjien hallinta, käyttöoikeudet ja alustan tila",
+  "admin_claim_title": "Ylläpitäjän valtuutus",
+  "admin_claim_desc": "Syötä järjestelmän ADMIN_SECRET-avain saadaksesi ylläpitäjän oikeudet.",
+  "admin_claim_btn": "Hae ylläpitäjän oikeudet",
+  "admin_stats_users": "Käyttäjiä yhteensä",
+  "admin_stats_active": "Aktiivisia",
+  "admin_stats_blocked": "Estettyjä",
+  "admin_stats_admins": "Ylläpitäjiä",
+  "admin_stats_sets": "Kanavaryhmiä",
+  "admin_stats_channels": "Kanavia",
+  "admin_block_btn": "Estä käyttäjä",
+  "admin_unblock_btn": "Poista esto",
+  "admin_delete_btn": "Poista käyttäjä"
 }

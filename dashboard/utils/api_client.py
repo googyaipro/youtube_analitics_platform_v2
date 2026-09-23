@@ -166,6 +166,44 @@ class APIClient:
         resp.raise_for_status()
         return resp.json()
 
+    # --- Administration Endpoints ---
+    def claim_admin(self, admin_secret: str) -> Dict[str, Any]:
+        url = f"{self.base_url}/admin/claim"
+        resp = requests.post(url, json={"admin_secret": admin_secret}, headers=self._headers(), timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_admin_stats(self) -> Dict[str, Any]:
+        url = f"{self.base_url}/admin/stats"
+        resp = requests.get(url, headers=self._headers(), timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_admin_users(self) -> List[Dict[str, Any]]:
+        url = f"{self.base_url}/admin/users"
+        resp = requests.get(url, headers=self._headers(), timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+
+    def toggle_user_active(self, user_id: str) -> Dict[str, Any]:
+        url = f"{self.base_url}/admin/users/{user_id}/toggle-active"
+        resp = requests.post(url, headers=self._headers(), timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+
+    def toggle_user_admin(self, user_id: str) -> Dict[str, Any]:
+        url = f"{self.base_url}/admin/users/{user_id}/toggle-admin"
+        resp = requests.post(url, headers=self._headers(), timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+
+    def delete_user(self, user_id: str) -> Dict[str, Any]:
+        url = f"{self.base_url}/admin/users/{user_id}"
+        resp = requests.delete(url, headers=self._headers(), timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+
+
 
 def get_api_client() -> APIClient:
     """Singleton getter for APIClient."""

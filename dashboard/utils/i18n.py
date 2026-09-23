@@ -78,7 +78,7 @@ def render_language_selector(sidebar: bool = True):
 
     target = st.sidebar if sidebar else st
     selected_lang = target.selectbox(
-        "🌐 Language / Язык",
+        "🌐 Language",
         options=options,
         index=current_idx,
         format_func=lambda code: SUPPORTED_LANGUAGES.get(code, code),

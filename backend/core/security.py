@@ -115,3 +115,15 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
     return user
+
+
+def get_current_admin_user(
+    current_user: "User" = Depends(get_current_user)
+):
+    """Dependency verifying that the caller has admin permissions."""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator access required."
+        )
+    return current_user

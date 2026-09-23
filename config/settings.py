@@ -31,8 +31,8 @@ class Settings(BaseSettings):
         default="8vX_8uM_6eN_4rT_2wQ_0zY_9xW_7vU_5sR_3qP_1oN=",
         validation_alias=AliasChoices("ENCRYPTION_SECRET", "ENCRYPTION_KEY")
     )
-    ADMIN_SECRET: Optional[str] = Field(
-        default=None,
+    ADMIN_SECRET: str = Field(
+        default="yap_admin_secret_2026",
         validation_alias=AliasChoices("ADMIN_SECRET", "ADMIN_KEY")
     )
     
@@ -42,8 +42,8 @@ class Settings(BaseSettings):
     TELEGRAM_WEBHOOK_SECRET: Optional[str] = None
     CRON_SECRET: Optional[str] = None
     
-    # Default Language (ru, en, de, fi, ka)
-    DEFAULT_LANGUAGE: str = "ru"
+    # Default Language (en, ru, de, fi, ka)
+    DEFAULT_LANGUAGE: str = "en"
     
     # Server Host & Port
     BACKEND_HOST: str = "0.0.0.0"
