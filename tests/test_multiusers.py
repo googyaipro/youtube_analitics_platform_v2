@@ -244,6 +244,23 @@ def test_telegram_commands_and_linking(db_session):
     db_session.refresh(user)
     assert user.language == "de"
 
+    # 5. Direct code message linking (without /start)
+    user.telegram_chat_id = None
+    user.telegram_link_code = "direct_token_123"
+    db_session.commit()
+
+    update_direct = {
+        "message": {
+            "chat": {"id": 987654321},
+            "text": "code direct_token_123 please",
+            "from": {"language_code": "ru"}
+        }
+    }
+    assert TelegramService.handle_webhook_update(db_session, update_direct) is True
+    db_session.refresh(user)
+    assert user.telegram_chat_id == "987654321"
+    assert user.telegram_link_code is None
+
 
 def test_api_endpoints_integration():
     from fastapi.testclient import TestClient
@@ -403,4 +420,9 @@ def test_admin_endpoints_and_authorization():
         # Verify victim no longer exists
         r_check_del = client.get("/api/v1/admin/users", headers=admin_headers)
         assert victim_email not in [u["email"] for u in r_check_del.json()]
+
+        # 10. Check admin telegram status endpoint
+        r_tg_status = client.get("/api/v1/admin/telegram-status", headers=admin_headers)
+        assert r_tg_status.status_code == 200
+        assert "bot_token_configured" in r_tg_status.json()
 

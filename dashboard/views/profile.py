@@ -141,12 +141,24 @@ with col_tg:
         if st.button(f"🔗 {t('link_telegram_btn')}", use_container_width=True):
             try:
                 link_data = client.generate_telegram_link()
-                link_url = link_data.get("link_url")
-                if link_url:
-                    st.markdown(f"### [👉 Open Telegram Bot]({link_url})")
-                    st.info(f"Or send command manually:\n`/start {link_data.get('link_code')}`")
+                st.session_state["tg_link_data"] = link_data
             except Exception as e:
-                st.error(f"Error generating link: {e}")
+                err_msg = str(e)
+                if hasattr(e, "response") and e.response is not None:
+                    try:
+                        err_msg = e.response.json().get("detail", err_msg)
+                    except Exception:
+                        pass
+                st.error(f"Error generating link: {err_msg}")
+
+        if "tg_link_data" in st.session_state:
+            link_data = st.session_state["tg_link_data"]
+            link_url = link_data.get("link_url")
+            link_code = link_data.get("code")
+            if link_url:
+                st.markdown(f"### [👉 Open Telegram Bot]({link_url})")
+            if link_code:
+                st.info(f"🔑 **Binding Code:** `{link_code}`\n\nSend this command to the bot:\n`/start {link_code}`\n*(or simply send the 16-character code directly in the chat)*")
 
     st.markdown("---")
     st.subheader(f"🌐 {t('language_label')}")

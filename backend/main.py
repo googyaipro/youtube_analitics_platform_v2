@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.v1.router import api_router
 from backend.core.database import init_db
+from backend.services.telegram_service import TelegramService
 from config.settings import get_settings
 
 logging.basicConfig(
@@ -21,6 +22,22 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing YouTube Analytics Platform (Multi-Tenant, Dokploy)...")
     init_db()
     logger.info("Database schema verified and ready.")
+
+    # Auto-register Telegram webhook if token is configured
+    if settings.TELEGRAM_BOT_TOKEN and " " not in settings.TELEGRAM_BOT_TOKEN:
+        try:
+            bot_info = TelegramService.get_bot_info()
+            if bot_info:
+                bot_user = bot_info.get("username")
+                logger.info(f"Telegram Bot active: @{bot_user}")
+                if not settings.TELEGRAM_BOT_USERNAME and bot_user:
+                    settings.TELEGRAM_BOT_USERNAME = bot_user
+
+            wh_res = TelegramService.register_webhook()
+            logger.info(f"Telegram Webhook auto-registration: {wh_res}")
+        except Exception as e:
+            logger.warning(f"Could not auto-register Telegram webhook on startup: {e}")
+
     yield
     logger.info("Shutting down backend services.")
 
@@ -47,10 +64,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount API v1 router (supporting both /api/v1 and /api)
+# Mount API v1 router (supporting both /api/v1 and /api for compatibility)
 app.include_router(api_router, prefix="/api/v1")
-if settings.API_V1_PREFIX not in ("/api/v1", ""):
-    app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+app.include_router(api_router, prefix="/api")
 
 
 @app.get("/health", tags=["Health"])

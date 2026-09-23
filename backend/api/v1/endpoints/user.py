@@ -89,18 +89,34 @@ def verify_key(
     raise HTTPException(status_code=400, detail="Invalid key_type")
 
 
+from backend.services.telegram_service import TelegramService
+
+
 @router.post("/telegram-link", response_model=TelegramLinkResponse)
 def generate_telegram_link(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Generate a one-time link to bind Telegram account to user profile."""
+    bot_token = settings.TELEGRAM_BOT_TOKEN
+    if not bot_token or " " in bot_token:
+        raise HTTPException(
+            status_code=400,
+            detail="TELEGRAM_BOT_TOKEN is not configured in server environment. Please contact administrator."
+        )
+
     link_code = secrets.token_hex(8)
     current_user.telegram_link_code = link_code
     db.commit()
 
     bot_username = (settings.TELEGRAM_BOT_USERNAME or "").lstrip("@")
-    link_url = f"https://t.me/{bot_username}?start={link_code}" if bot_username else f"t.me/?start={link_code}"
+    if not bot_username:
+        bot_info = TelegramService.get_bot_info()
+        if bot_info and bot_info.get("username"):
+            bot_username = bot_info.get("username")
+            settings.TELEGRAM_BOT_USERNAME = bot_username
+
+    link_url = f"https://t.me/{bot_username}?start={link_code}" if bot_username else f"https://t.me/?start={link_code}"
 
     return TelegramLinkResponse(
         link_url=link_url,

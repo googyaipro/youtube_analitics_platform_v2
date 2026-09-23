@@ -203,6 +203,18 @@ class APIClient:
         resp.raise_for_status()
         return resp.json()
 
+    def get_admin_telegram_status(self) -> Dict[str, Any]:
+        url = f"{self.base_url}/admin/telegram-status"
+        resp = requests.get(url, headers=self._headers(), timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+
+    def setup_admin_telegram_webhook(self) -> Dict[str, Any]:
+        url = f"{self.base_url}/admin/telegram-setup-webhook"
+        resp = requests.post(url, headers=self._headers(), timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+
 
 
 def get_api_client() -> APIClient:

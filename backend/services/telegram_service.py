@@ -77,6 +77,77 @@ class TelegramService:
             return False
 
     @classmethod
+    def get_bot_info(cls) -> Optional[Dict[str, Any]]:
+        """Fetch bot metadata from Telegram getMe."""
+        bot_token = settings.TELEGRAM_BOT_TOKEN
+        if not bot_token or " " in bot_token:
+            return None
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                res = client.get(f"https://api.telegram.org/bot{bot_token}/getMe")
+                if res.status_code == 200 and res.json().get("ok"):
+                    return res.json().get("result")
+                logger.warning(f"Telegram getMe failed ({res.status_code}): {res.text}")
+        except Exception as e:
+            logger.error(f"Error fetching Telegram getMe: {e}")
+        return None
+
+    @classmethod
+    def get_webhook_info(cls) -> Optional[Dict[str, Any]]:
+        """Fetch current webhook registration status from Telegram getWebhookInfo."""
+        bot_token = settings.TELEGRAM_BOT_TOKEN
+        if not bot_token or " " in bot_token:
+            return None
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                res = client.get(f"https://api.telegram.org/bot{bot_token}/getWebhookInfo")
+                if res.status_code == 200 and res.json().get("ok"):
+                    return res.json().get("result")
+                logger.warning(f"Telegram getWebhookInfo failed ({res.status_code}): {res.text}")
+        except Exception as e:
+            logger.error(f"Error fetching Telegram getWebhookInfo: {e}")
+        return None
+
+    @classmethod
+    def register_webhook(cls) -> Dict[str, Any]:
+        """Automatically register webhook URL and bot commands with Telegram."""
+        bot_token = settings.TELEGRAM_BOT_TOKEN
+        if not bot_token or " " in bot_token:
+            return {"ok": False, "description": "TELEGRAM_BOT_TOKEN is not configured"}
+
+        webhook_url = f"https://{settings.DOKPLOY_API_DOMAIN}/api/v1/telegram/webhook"
+        tg_url = f"https://api.telegram.org/bot{bot_token}/setWebhook"
+        params: Dict[str, Any] = {
+            "url": webhook_url,
+            "drop_pending_updates": False
+        }
+        if settings.TELEGRAM_WEBHOOK_SECRET:
+            params["secret_token"] = settings.TELEGRAM_WEBHOOK_SECRET
+
+        result = {"ok": False}
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(tg_url, json=params)
+                result = res.json()
+                logger.info(f"Telegram setWebhook result: {result}")
+
+                # Register bot commands menu
+                commands = [
+                    {"command": "top", "description": "Top 10 videos of active set"},
+                    {"command": "sets", "description": "Your channel sets & schedules"},
+                    {"command": "explain", "description": "AI analysis of video (e.g. /explain 1)"},
+                    {"command": "lang", "description": "Change language (ru, en, de, fi, ka)"},
+                    {"command": "status", "description": "Check API keys and schedule"},
+                    {"command": "help", "description": "Commands help"}
+                ]
+                client.post(f"https://api.telegram.org/bot{bot_token}/setMyCommands", json={"commands": commands})
+        except Exception as e:
+            logger.error(f"Error registering Telegram webhook: {e}")
+            result = {"ok": False, "description": str(e)}
+
+        return result
+
+    @classmethod
     def handle_webhook_update(cls, db: Session, update: Dict[str, Any]) -> bool:
         """Process incoming Telegram message, command, or deep-linking binding."""
         message = update.get("message", {})
@@ -90,41 +161,55 @@ class TelegramService:
         # 1. Check if user is already linked
         user = db.query(User).filter(User.telegram_chat_id == chat_id).first()
 
-        # Command /start [token]
+        # 2. Check for binding code (either in /start <token> or sent directly as code)
+        link_code_candidate = None
         if text.startswith("/start"):
             parts = text.split()
             if len(parts) > 1:
-                link_code = parts[1].strip()
-                target_user = db.query(User).filter(User.telegram_link_code == link_code).first()
-                if target_user:
-                    target_user.telegram_chat_id = chat_id
-                    target_user.telegram_link_code = None
-                    if not target_user.language and tg_lang in ("ru", "en", "de", "fi", "ka"):
-                        target_user.language = tg_lang
-                    db.commit()
-                    cls.send_message(
-                        chat_id,
-                        f"🎉 **Аккаунт успешно привязан!**\n\nДобро пожаловать, **{target_user.email}**!\nТеперь вам будут приходить персональные дайджесты по вашим наборам каналов с сайта [yap.oxyjet.win](https://yap.oxyjet.win).\n\nИспользуйте команду /help для списка возможностей."
-                    )
-                    return True
-                else:
-                    cls.send_message(chat_id, "⚠️ Код привязки устарел или недействителен. Сгенерируйте новую ссылку в личном кабинете на yap.oxyjet.win.")
-                    return True
+                link_code_candidate = parts[1].strip()
+
+        if not link_code_candidate:
+            for token in text.split():
+                clean = token.strip()
+                if clean and db.query(User).filter(User.telegram_link_code == clean).first():
+                    link_code_candidate = clean
+                    break
+
+        if link_code_candidate:
+            target_user = db.query(User).filter(User.telegram_link_code == link_code_candidate).first()
+            if target_user:
+                target_user.telegram_chat_id = chat_id
+                target_user.telegram_link_code = None
+                if not target_user.language and tg_lang in ("ru", "en", "de", "fi", "ka"):
+                    target_user.language = tg_lang
+                db.commit()
+                cls.send_message(
+                    chat_id,
+                    f"🎉 **Аккаунт успешно привязан!**\n\nДобро пожаловать, **{target_user.email}**!\nТеперь вам будут приходить персональные дайджесты по вашим наборам каналов с сайта [yap.oxyjet.win](https://yap.oxyjet.win).\n\nИспользуйте команду /help для списка возможностей."
+                )
+                return True
             else:
-                if user:
-                    cls.send_message(chat_id, f"👋 С возвращением, **{user.email}**! Используйте /sets для выбора набора или /top для просмотра лидеров.")
-                else:
-                    cls.send_message(
-                        chat_id,
-                        "👋 Привет! Чтобы связать этого бота с вашим аккаунтом на платформе аналитики:\n1. Зайдите в профиль на **https://yap.oxyjet.win**\n2. Нажмите кнопку **«Привязать Telegram»**\n3. Перейдите по сгенерированной ссылке."
-                    )
+                cls.send_message(chat_id, "⚠️ Код привязки устарел или недействителен. Сгенерируйте новую ссылку в личном кабинете на yap.oxyjet.win.")
                 return True
 
+        # If user is not yet bound
         if not user:
+            if text.startswith("/start"):
+                cls.send_message(
+                    chat_id,
+                    "👋 Привет! Чтобы связать этого бота с вашим аккаунтом на платформе аналитики:\n1. Зайдите в профиль на **https://yap.oxyjet.win**\n2. Нажмите кнопку **«Привязать Telegram»**\n3. Перейдите по ссылке или отправьте полученный 16-значный код прямо сюда в чат."
+                )
+                return True
+
             cls.send_message(
                 chat_id,
-                "🔒 Ваш Telegram-аккаунт еще не привязан к личному кабинету.\nАвторизуйтесь на **https://yap.oxyjet.win** и нажмите «Привязать Telegram» в настройках профиля."
+                "🔒 Ваш Telegram-аккаунт еще не привязан к личному кабинету.\nАвторизуйтесь на **https://yap.oxyjet.win**, нажмите «Привязать Telegram» в настройках профиля и отправьте сюда 16-значный код привязки."
             )
+            return True
+
+        # User is authenticated! Handle commands:
+        if text.startswith("/start"):
+            cls.send_message(chat_id, f"👋 С возвращением, **{user.email}**! Используйте /sets для выбора набора или /top для просмотра лидеров.")
             return True
 
         # User is authenticated! Handle commands:

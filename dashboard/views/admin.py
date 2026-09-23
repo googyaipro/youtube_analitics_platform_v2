@@ -86,6 +86,40 @@ c6.metric(t("admin_stats_channels"), stats.get("total_channels", 0))
 
 st.markdown("---")
 
+# 1.1 Telegram Bot & Webhook Diagnostics
+with st.expander("🤖 Telegram Bot & Webhook Diagnostics", expanded=True):
+    try:
+        tg_status = client.get_admin_telegram_status()
+        bot_cfg = tg_status.get("bot_token_configured")
+        bot_info = tg_status.get("bot_info") or {}
+        wh_info = tg_status.get("webhook_info") or {}
+        expected_url = tg_status.get("expected_webhook_url")
+        current_url = wh_info.get("url", "")
+        
+        tc1, tc2, tc3 = st.columns(3)
+        with tc1:
+            bot_label = f"@{bot_info.get('username')}" if bot_info.get("username") else ("Configured" if bot_cfg else "Not Configured")
+            tc1.metric("Bot Status", bot_label)
+        with tc2:
+            wh_label = "🟢 Connected" if (current_url and current_url == expected_url) else "⚠️ Needs Sync"
+            tc2.metric("Webhook Status", wh_label)
+        with tc3:
+            tc3.metric("Pending Updates", wh_info.get("pending_update_count", 0))
+
+        st.markdown(f"**Registered Webhook URL:** `{current_url or 'None (Not registered with Telegram)'}`")
+        st.markdown(f"**Expected Webhook URL:** `{expected_url}`")
+        if wh_info.get("last_error_message"):
+            st.error(f"⚠️ Last Telegram Error: {wh_info.get('last_error_message')}")
+
+        if st.button("🔄 Sync / Re-register Telegram Webhook Now", type="secondary", use_container_width=True):
+            res = client.setup_admin_telegram_webhook()
+            st.success("Telegram Webhook successfully re-registered!")
+            st.rerun()
+    except Exception as e:
+        st.error(f"Error checking Telegram status: {e}")
+
+st.markdown("---")
+
 # 2. Users Management
 st.subheader("👥 User Accounts & Access Control")
 

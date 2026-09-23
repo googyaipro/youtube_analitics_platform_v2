@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from backend.schemas.admin import (
     AdminActionResponse,
     AdminClaimRequest
 )
+from backend.services.telegram_service import TelegramService
 from config.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -205,3 +206,34 @@ def delete_user(
         message=f"User {user_email} and all associated data permanently deleted.",
         user_id=user_id
     )
+
+
+@router.get("/telegram-status", response_model=Dict[str, Any])
+def get_telegram_status(admin: User = Depends(get_current_admin_user)):
+    """Diagnostics for Telegram bot and webhook connection."""
+    bot_info = TelegramService.get_bot_info()
+    wh_info = TelegramService.get_webhook_info()
+    expected_url = f"https://{settings.DOKPLOY_API_DOMAIN}/api/v1/telegram/webhook"
+    
+    return {
+        "bot_token_configured": bool(settings.TELEGRAM_BOT_TOKEN and " " not in settings.TELEGRAM_BOT_TOKEN),
+        "bot_username": settings.TELEGRAM_BOT_USERNAME or (bot_info.get("username") if bot_info else None),
+        "bot_info": bot_info,
+        "webhook_info": wh_info,
+        "expected_webhook_url": expected_url,
+        "secret_token_configured": bool(settings.TELEGRAM_WEBHOOK_SECRET)
+    }
+
+
+@router.post("/telegram-setup-webhook", response_model=Dict[str, Any])
+def setup_telegram_webhook(admin: User = Depends(get_current_admin_user)):
+    """Trigger webhook registration with Telegram directly from Admin panel."""
+    reg_result = TelegramService.register_webhook()
+    wh_info = TelegramService.get_webhook_info()
+    bot_info = TelegramService.get_bot_info()
+    
+    return {
+        "registration_result": reg_result,
+        "webhook_info": wh_info,
+        "bot_info": bot_info
+    }
