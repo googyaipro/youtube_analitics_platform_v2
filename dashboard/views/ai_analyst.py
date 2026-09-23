@@ -17,8 +17,6 @@ except ModuleNotFoundError:
     from utils.auth_ui import require_auth
     from utils.i18n import t
 
-st.set_page_config(page_title="AI-Аналитик", page_icon="💬", layout="wide")
-
 user = require_auth()
 client = get_api_client()
 
@@ -28,7 +26,7 @@ st.title(f"💬 {t('ai_analyst_title')}")
 st.caption(f"{t('ai_analyst_subtitle')} (Gemini 2.5 Flash / Google AI Studio)")
 
 if not user.get("gemini_api_key_valid"):
-    st.warning("⚠️ Для работы интерактивного AI-аналитика требуется добавить ваш бесплатный **Gemini API Key** в разделе **«🔑 Профиль и API»**.")
+    st.warning("⚠️ Gemini API Key is required for interactive AI Analyst. Configure it in Profile & API Keys.")
 
 # Chat history per active set
 history_key = f"chat_history_{active_set_id}"
@@ -36,7 +34,7 @@ if history_key not in st.session_state:
     st.session_state[history_key] = [
         {
             "role": "assistant",
-            "content": "Привет! Я твой YouTube AI-аналитик. Задай мне любой вопрос о твоих конкурентах в этом наборе каналов!\n\nНапример:\n- *Какие форматы роликов сейчас показывают максимальный рост?*\n- *Проанализируй заголовки лидеров по просмотрам.*\n- *Что мне снять на свой канал на основе успешных тем конкурентов?*",
+            "content": "Hello! I am your YouTube AI Analyst. Ask me anything about your competitors and viral trends in this channel set!\n\nFor example:\n- *Which video formats are currently exhibiting highest velocity?*\n- *Analyze titles and hooks of viral leaders.*\n- *What content topics should I produce based on competitor gaps?*",
             "chart": None
         }
     ]
@@ -61,12 +59,12 @@ if user_query:
         st.markdown(user_query)
 
     with st.chat_message("assistant"):
-        with st.spinner("Gemini анализирует контекст видео..."):
+        with st.spinner("Analyzing with Gemini AI..."):
             try:
                 response = client.ask_ai_analyst(
                     query=user_query,
                     set_id=active_set_id,
-                    target_language=user.get("language", "ru")
+                    target_language=user.get("language", "en")
                 )
                 answer = response.get("answer", "")
                 findings = response.get("key_findings", [])
@@ -75,7 +73,7 @@ if user_query:
                 findings_text = "\n".join([f"• {f}" for f in findings]) if findings else ""
                 full_text = answer
                 if findings_text:
-                    full_text += f"\n\n**📌 Ключевые выводы:**\n{findings_text}"
+                    full_text += f"\n\n**📌 Key Takeaways:**\n{findings_text}"
 
                 st.markdown(full_text)
                 if plotly_spec:
@@ -91,6 +89,6 @@ if user_query:
                     "chart": plotly_spec
                 })
             except Exception as e:
-                err = f"Ошибка: {e}"
+                err = f"Error: {e}"
                 st.error(err)
                 st.session_state[history_key].append({"role": "assistant", "content": err, "chart": None})

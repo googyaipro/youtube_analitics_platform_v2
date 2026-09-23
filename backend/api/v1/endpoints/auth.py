@@ -25,7 +25,7 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
         email=user_in.email.lower(),
         hashed_password=hash_password(user_in.password),
         full_name=user_in.full_name,
-        language="ru"
+        language=user_in.language or "en"
     )
     db.add(new_user)
     db.commit()

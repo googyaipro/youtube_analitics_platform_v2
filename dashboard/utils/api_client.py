@@ -27,7 +27,7 @@ class APIClient:
         resp.raise_for_status()
         return resp.json()
 
-    def register(self, email: str, password: str, full_name: Optional[str] = None, language: str = "ru") -> Dict[str, Any]:
+    def register(self, email: str, password: str, full_name: Optional[str] = None, language: str = "en") -> Dict[str, Any]:
         url = f"{self.base_url}/auth/register"
         resp = requests.post(url, json={
             "email": email,

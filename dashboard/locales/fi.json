@@ -71,5 +71,10 @@
   "link_telegram_btn": "Yhdistä Telegram",
   "telegram_linked": "Telegram-tili yhdistetty!",
   "telegram_not_linked": "Telegramia ei ole vielä yhdistetty",
-  "language_label": "Käyttöliittymän ja raporttien kieli"
+  "language_label": "Käyttöliittymän ja raporttien kieli",
+  "nav_home": "Etusivu",
+  "nav_dynamics": "Dynamiikka & Tulostaulukko",
+  "nav_ai_analyst": "Tekoälyanalyytikko",
+  "nav_channel_sets": "Kanavaryhmät & Aikataulu",
+  "nav_profile": "Profiili & API-avaimet"
 }

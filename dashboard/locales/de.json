@@ -71,5 +71,10 @@
   "link_telegram_btn": "Telegram verknüpfen",
   "telegram_linked": "Telegram-Konto verknüpft!",
   "telegram_not_linked": "Telegram noch nicht verknüpft",
-  "language_label": "Sprache für Benutzeroberfläche & Berichte"
+  "language_label": "Sprache für Benutzeroberfläche & Berichte",
+  "nav_home": "Startseite",
+  "nav_dynamics": "Dynamik & Rangliste",
+  "nav_ai_analyst": "KI-Analyst",
+  "nav_channel_sets": "Kanal-Sets & Zeitplan",
+  "nav_profile": "Profil & API-Schlüssel"
 }

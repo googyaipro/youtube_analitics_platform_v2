@@ -71,5 +71,10 @@
   "link_telegram_btn": "Telegram-ის დაკავშირება",
   "telegram_linked": "Telegram წარმატებით დაუკავშირდა!",
   "telegram_not_linked": "Telegram ჯერ არ არის დაკავშირებული",
-  "language_label": "ინტერფეისისა და ანგარიშების ენა"
+  "language_label": "ინტერფეისისა და ანგარიშების ენა",
+  "nav_home": "მთავარი",
+  "nav_dynamics": "დინამიკა და ლიდერბორდი",
+  "nav_ai_analyst": "AI ანალიტიკოსი",
+  "nav_channel_sets": "არხების ნაკრებები და განრიგი",
+  "nav_profile": "პროფილი და API გასაღებები"
 }

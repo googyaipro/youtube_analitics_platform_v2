@@ -25,7 +25,7 @@ class User(Base):
     telegram_link_code = Column(String(32), unique=True, index=True, nullable=True)
 
     # Preferences
-    language = Column(String(10), default="ru")  # en, de, fi, ru, ka
+    language = Column(String(10), default="en")  # en, de, fi, ru, ka
     active_set_id = Column(String(36), nullable=True)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)

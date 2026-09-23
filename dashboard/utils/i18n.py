@@ -7,8 +7,8 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 SUPPORTED_LANGUAGES = {
+    "en": "🇺🇸 English",
     "ru": "🇷🇺 Русский",
-    "en": "🇬🇧 English",
     "de": "🇩🇪 Deutsch",
     "fi": "🇫🇮 Suomi",
     "ka": "🇬🇪 ქართული"
@@ -25,7 +25,7 @@ def load_translations(lang: str) -> Dict[str, str]:
 
     filepath = LOCALES_DIR / f"{lang}.json"
     if not filepath.exists():
-        filepath = LOCALES_DIR / "ru.json"
+        filepath = LOCALES_DIR / "en.json"
 
     try:
         with open(filepath, "r", encoding="utf-8") as f:
@@ -40,7 +40,7 @@ def load_translations(lang: str) -> Dict[str, str]:
 def get_current_language() -> str:
     """Retrieve current UI language from session state."""
     if "language" not in st.session_state:
-        st.session_state["language"] = "ru"
+        st.session_state["language"] = "en"
     return st.session_state["language"]
 
 

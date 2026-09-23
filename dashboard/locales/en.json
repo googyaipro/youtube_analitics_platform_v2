@@ -71,5 +71,10 @@
   "link_telegram_btn": "Link Telegram Account",
   "telegram_linked": "Telegram account connected!",
   "telegram_not_linked": "Telegram not linked yet",
-  "language_label": "Interface & Report Language"
+  "language_label": "Interface & Report Language",
+  "nav_home": "Home",
+  "nav_dynamics": "Dynamics & Leaderboard",
+  "nav_ai_analyst": "AI Analyst",
+  "nav_channel_sets": "Channel Sets & Schedule",
+  "nav_profile": "Profile & API Keys"
 }

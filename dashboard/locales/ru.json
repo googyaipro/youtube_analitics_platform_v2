@@ -71,5 +71,10 @@
   "link_telegram_btn": "Привязать Telegram",
   "telegram_linked": "Telegram успешно подключен!",
   "telegram_not_linked": "Telegram еще не подключен",
-  "language_label": "Язык интерфейса и отчетов"
+  "language_label": "Язык интерфейса и отчетов",
+  "nav_home": "Главная",
+  "nav_dynamics": "Динамика и Лидерборд",
+  "nav_ai_analyst": "AI-Аналитик",
+  "nav_channel_sets": "Наборы каналов и планировщик",
+  "nav_profile": "Профиль и API ключи"
 }

@@ -7,6 +7,7 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6, description="Password at least 6 characters")
     full_name: Optional[str] = None
+    language: Optional[str] = "en"
 
 
 class UserLogin(BaseModel):
