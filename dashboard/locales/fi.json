@@ -117,5 +117,20 @@
   "expander_executive_digest": "Katsauksen AI-kooste",
   "btn_hide_digest": "✕ Piilota kooste",
   "confirm_delete_btn": "Vahvista poisto",
-  "delete_channel_btn": "Poista kanava"
+  "delete_channel_btn": "Poista kanava",
+  "filter_channel": "Kanavasuodatin",
+  "all_channels": "Kaikki kanavat",
+  "filter_format": "Muoto",
+  "format_all": "Kaikki muodot",
+  "format_long": "🎬 Video",
+  "format_short": "📱 Shorts",
+  "sort_by": "Lajittele",
+  "sort_views": "👁️ Katselukerrat",
+  "sort_outlier": "🚀 Viraalisuus (x-kerroin)",
+  "sort_vph": "⚡ Nopeus (VPH)",
+  "sort_published": "🕒 Uusimmat (Päiväys)",
+  "sort_views_subs": "💎 Kattavuus (Views/Subs)",
+  "metric_channel_median": "Kanavan mediaani:",
+  "metric_views_subs": "Kattavuus:",
+  "metric_format": "Muoto:"
 }

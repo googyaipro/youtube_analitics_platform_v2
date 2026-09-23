@@ -117,5 +117,20 @@
   "expander_executive_digest": "Executive AI-Дайджест ниши",
   "btn_hide_digest": "✕ Скрыть дайджест",
   "confirm_delete_btn": "Подтвердить удаление",
-  "delete_channel_btn": "Удалить канал"
+  "delete_channel_btn": "Удалить канал",
+  "filter_channel": "Фильтр каналов",
+  "all_channels": "Все каналы",
+  "filter_format": "Формат",
+  "format_all": "Все форматы",
+  "format_long": "🎬 Видео",
+  "format_short": "📱 Shorts",
+  "sort_by": "Сортировка",
+  "sort_views": "👁️ Просмотры",
+  "sort_outlier": "🚀 Виральность (x-Factor)",
+  "sort_vph": "⚡ Скорость (VPH)",
+  "sort_published": "🕒 Свежие (Дата)",
+  "sort_views_subs": "💎 Охват (Views/Subs)",
+  "metric_channel_median": "Медиана нормы:",
+  "metric_views_subs": "Охват аудитории:",
+  "metric_format": "Формат:"
 }

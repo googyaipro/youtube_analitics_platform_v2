@@ -117,5 +117,20 @@
   "expander_executive_digest": "Executive AI-დაიჯესტი",
   "btn_hide_digest": "✕ დაიჯესტის დამალვა",
   "confirm_delete_btn": "წაშლის დადასტურება",
-  "delete_channel_btn": "არხის წაშლა"
+  "delete_channel_btn": "არხის წაშლა",
+  "filter_channel": "არხის ფილტრი",
+  "all_channels": "ყველა არხი",
+  "filter_format": "ფორმატი",
+  "format_all": "ყველა ფორმატი",
+  "format_long": "🎬 ვიდეო",
+  "format_short": "📱 Shorts",
+  "sort_by": "დალაგება",
+  "sort_views": "👁️ ნახვები",
+  "sort_outlier": "🚀 ვირალურობა (x-ფაქტორი)",
+  "sort_vph": "⚡ სიჩქარე (VPH)",
+  "sort_published": "🕒 უახლესი (თარიღი)",
+  "sort_views_subs": "💎 წვდომა (Views/Subs)",
+  "metric_channel_median": "არხის მედიანა:",
+  "metric_views_subs": "წვდომა:",
+  "metric_format": "ფორმატი:"
 }

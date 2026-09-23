@@ -117,5 +117,20 @@
   "expander_executive_digest": "Executive Niche AI Digest",
   "btn_hide_digest": "✕ Hide Digest",
   "confirm_delete_btn": "Confirm Delete",
-  "delete_channel_btn": "Delete Channel"
+  "delete_channel_btn": "Delete Channel",
+  "filter_channel": "Channel Filter",
+  "all_channels": "All Channels",
+  "filter_format": "Format",
+  "format_all": "All Formats",
+  "format_long": "🎬 Video",
+  "format_short": "📱 Shorts",
+  "sort_by": "Sort by",
+  "sort_views": "👁️ Views",
+  "sort_outlier": "🚀 Virality (x-Factor)",
+  "sort_vph": "⚡ Velocity (VPH)",
+  "sort_published": "🕒 Fresh (Date)",
+  "sort_views_subs": "💎 Audience Penetration (Views/Subs)",
+  "metric_channel_median": "Channel Median:",
+  "metric_views_subs": "Views / Subs:",
+  "metric_format": "Format:"
 }

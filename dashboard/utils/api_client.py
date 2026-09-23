@@ -138,13 +138,24 @@ class APIClient:
         return resp.json()
 
     # --- Videos & KPIs ---
-    def get_videos(self, set_id: Optional[str] = None, channel_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_videos(
+        self,
+        set_id: Optional[str] = None,
+        channel_id: Optional[str] = None,
+        format_filter: Optional[str] = "all",
+        sort_by: Optional[str] = "views",
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
         url = f"{self.base_url}/videos"
         params = {"limit": limit}
         if set_id:
             params["set_id"] = set_id
         if channel_id:
             params["channel_id"] = channel_id
+        if format_filter:
+            params["format_filter"] = format_filter
+        if sort_by:
+            params["sort_by"] = sort_by
         resp = requests.get(url, params=params, headers=self._headers(), timeout=15)
         return resp.json() if resp.status_code == 200 else []
 

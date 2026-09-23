@@ -144,19 +144,43 @@ st.subheader(f"🔥 {t('top_videos')}")
 
 # Filter by channel inside this set
 channels = client.get_channels(set_id=selected_set_id)
-channel_options = {"All Channels": None}
+channel_options = {t("all_channels"): None}
 for c in channels:
     label = c.get("title") or c.get("custom_url") or c.get("channel_id")
     channel_options[label] = c.get("channel_id")
 
-col_filter, col_limit = st.columns([3, 1])
-with col_filter:
-    selected_ch_label = st.selectbox("Channel Filter:", options=list(channel_options.keys()))
+col_ch, col_fmt, col_sort, col_limit = st.columns([3, 2, 3, 1])
+with col_ch:
+    selected_ch_label = st.selectbox(f"🏢 {t('filter_channel')}", options=list(channel_options.keys()))
+with col_fmt:
+    format_options = {
+        t("format_all"): "all",
+        t("format_long"): "long",
+        t("format_short"): "short"
+    }
+    selected_fmt_label = st.selectbox(f"🎬 {t('filter_format')}", options=list(format_options.keys()))
+    selected_format = format_options.get(selected_fmt_label, "all")
+with col_sort:
+    sort_options = {
+        t("sort_views"): "views",
+        t("sort_outlier"): "outlier",
+        t("sort_vph"): "vph",
+        t("sort_published"): "published_at",
+        t("sort_views_subs"): "views_to_subs"
+    }
+    selected_sort_label = st.selectbox(f"📊 {t('sort_by')}", options=list(sort_options.keys()))
+    selected_sort = sort_options.get(selected_sort_label, "views")
 with col_limit:
     selected_limit = st.selectbox("Limit:", options=[10, 20, 50, 100], index=1)
 
 selected_channel_id = channel_options.get(selected_ch_label)
-videos = client.get_videos(set_id=selected_set_id, channel_id=selected_channel_id, limit=selected_limit)
+videos = client.get_videos(
+    set_id=selected_set_id,
+    channel_id=selected_channel_id,
+    format_filter=selected_format,
+    sort_by=selected_sort,
+    limit=selected_limit
+)
 
 if not videos:
     st.info(t("no_channels"))
@@ -187,7 +211,8 @@ else:
     
     for idx, v in df.iterrows():
         badges_display = f" `{v['badges_str']}`" if v["badges_str"] else ""
-        expander_title = f"#{idx+1} | {fmt_num(v.get('view_count', 0))} views | {v.get('outlier_score', 1.0)}x | {v.get('channel_title', '')} — «{v.get('title', '')}»{badges_display}"
+        dur_display = f" [{v.get('duration_formatted')}]" if v.get("duration_formatted") and v.get("duration_formatted") != "--:--" else ""
+        expander_title = f"#{idx+1} | {fmt_num(v.get('view_count', 0))} views | {v.get('outlier_score', 1.0)}x | {v.get('channel_title', '')} — «{v.get('title', '')}»{dur_display}{badges_display}"
         
         with st.expander(expander_title):
             c_thumb, c_stats, c_ai = st.columns([2, 3, 4])
@@ -198,10 +223,16 @@ else:
                 st.markdown(f"[▶️ YouTube]({v['youtube_link']})")
 
             with c_stats:
+                fmt_tag = "📱 Shorts" if v.get("is_short") else "🎬 Video"
                 st.markdown(f"**Channel:** {v.get('channel_title', '')}")
+                if v.get("subscriber_count"):
+                    st.markdown(f"**Subscribers:** {fmt_num(v.get('subscriber_count', 0))}")
+                st.markdown(f"**{t('metric_format')}** `{fmt_tag}` ({v.get('duration_formatted', '--:--')})")
                 st.markdown(f"**Views:** {fmt_num(v.get('view_count', 0))}")
-                st.markdown(f"**Channel Avg:** {fmt_num(v.get('channel_avg_views', 0))}")
+                st.markdown(f"**{t('metric_channel_median')}** {fmt_num(v.get('channel_avg_views', 0))}")
                 st.markdown(f"**Multiplier (Outlier):** `{v.get('outlier_score', 1.0)}x`")
+                if v.get("views_to_subs_pct"):
+                    st.markdown(f"**{t('metric_views_subs')}** `{v.get('views_to_subs_pct', 0.0)}%`")
                 st.markdown(f"**Velocity (VPH):** `{v.get('velocity_vph', 0.0)}`")
                 st.markdown(f"**Engagement (ER):** `{v.get('engagement_rate_pct', 0.0)}%`")
                 st.markdown(f"**Published:** {str(v.get('published_at'))[:10]}")

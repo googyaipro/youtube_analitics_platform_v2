@@ -20,6 +20,8 @@ router = APIRouter(prefix="/videos", tags=["Videos"])
 def list_videos(
     set_id: Optional[str] = Query(None, description="Channel Set ID (defaults to active set)"),
     channel_id: Optional[str] = Query(None, description="Filter by YouTube Channel ID"),
+    format_filter: Optional[str] = Query("all", description="Video format: all, long, short"),
+    sort_by: Optional[str] = Query("views", description="Sort by: views, outlier, vph, published_at, views_to_subs"),
     limit: int = Query(50, ge=1, le=200, description="Max videos to return"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -41,7 +43,9 @@ def list_videos(
         user_id=current_user.id,
         set_id=target_set_id,
         limit=limit,
-        channel_id=channel_id
+        channel_id=channel_id,
+        format_filter=format_filter,
+        sort_by=sort_by
     )
 
 
@@ -139,6 +143,11 @@ def explain_video(
             "outlier_score": target_video.get("outlier_score", 1.0),
             "velocity_vph": target_video.get("velocity_vph", 0.0),
             "engagement_rate_pct": target_video.get("engagement_rate_pct", 0.0),
+            "duration_formatted": target_video.get("duration_formatted", "--:--"),
+            "format_type": target_video.get("format_type", "long"),
+            "is_short": target_video.get("is_short", False),
+            "subscriber_count": target_video.get("subscriber_count", 0),
+            "views_to_subs_pct": target_video.get("views_to_subs_pct", 0.0),
             "published_at": str(target_video.get("published_at"))
         },
         "badges": target_video.get("badges", []),

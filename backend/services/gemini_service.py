@@ -117,6 +117,14 @@ class GeminiService:
         vph = target_video.get("velocity_vph", 0.0)
         er = target_video.get("engagement_rate_pct", 0.0)
 
+        subs = target_video.get("subscriber_count", 0)
+        subs_str = f"{subs:,}" if subs else "Не указано"
+        format_type = "Shorts 📱" if target_video.get("is_short") else "Long-form 🎬"
+        dur_fmt = target_video.get("duration_formatted", "--:--")
+        views_to_subs = target_video.get("views_to_subs_pct", 0.0)
+        pub_at = str(target_video.get("published_at", ""))[:19]
+        desc = (target_video.get("description") or "")[:400]
+
         lang_name = LANGUAGE_PROMPT_NAMES.get(target_language, "русском (Russian)")
 
         if not gemini_api_key:
@@ -126,11 +134,17 @@ class GeminiService:
             "video_explain.txt",
             title=title,
             channel_title=ch_title,
+            subscriber_count=subs_str,
+            format_type=format_type,
+            duration_formatted=dur_fmt,
+            published_at=pub_at,
             views=f"{views:,}",
             avg_views=f"{int(avg_views):,}",
             outlier_score=outlier,
+            views_to_subs_pct=views_to_subs,
             velocity_vph=vph,
             engagement_rate=er,
+            description_snippet=desc or "Нет описания",
             target_language_name=lang_name,
         )
         response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=1500, temperature=0.25)
@@ -165,13 +179,16 @@ class GeminiService:
             {
                 "title": v.get("title"),
                 "channel": v.get("channel_title"),
-                "views": v.get("view_count", 0),
-                "channel_avg": v.get("channel_avg_views", 0),
+                "channel_subs": f"{v.get('subscriber_count', 0):,}" if v.get("subscriber_count") else "Н/Д",
+                "format": "Shorts" if v.get("is_short") else f"Video ({v.get('duration_formatted', '--:--')})",
+                "views": f"{v.get('view_count', 0):,}",
+                "channel_norm": f"{v.get('channel_avg_views', 0):,}",
                 "outlier_multiplier": f"{v.get('outlier_score', 1.0)}x",
-                "velocity_vph": v.get("velocity_vph", 0),
+                "velocity_vph": f"{v.get('velocity_vph', 0)} VPH",
+                "views_to_subs": f"{v.get('views_to_subs_pct', 0.0)}%",
                 "engagement_rate": f"{v.get('engagement_rate_pct', 0)}%"
             }
-            for v in top_videos[:10]
+            for v in top_videos[:12]
         ]
 
         channels_list = ", ".join([c.get("title", "") for c in channels_summary[:6]])
@@ -211,10 +228,27 @@ class GeminiService:
                 "key_findings": ["Ключ Gemini не настроен"]
             }
 
+        vids_context_compact = [
+            {
+                "title": v.get("title"),
+                "channel": v.get("channel_title"),
+                "subs": v.get("subscriber_count", 0),
+                "format": "Shorts" if v.get("is_short") else f"Video ({v.get('duration_formatted', '--:--')})",
+                "views": v.get("view_count", 0),
+                "channel_norm": v.get("channel_avg_views", 0),
+                "outlier": f"{v.get('outlier_score', 1.0)}x",
+                "vph": v.get("velocity_vph", 0),
+                "views_to_subs": f"{v.get('views_to_subs_pct', 0.0)}%",
+                "er": f"{v.get('engagement_rate_pct', 0)}%",
+                "published_at": str(v.get("published_at", ""))[:10]
+            }
+            for v in videos_context[:12]
+        ]
+
         prompt = render_prompt(
             "ask_analyst.txt",
             query=query,
-            videos_json=json.dumps(videos_context[:10], default=str, ensure_ascii=False, indent=2),
+            videos_json=json.dumps(vids_context_compact, default=str, ensure_ascii=False, indent=2),
             target_language_name=lang_name,
         )
         response_text = cls._call_gemini(prompt, gemini_api_key, max_tokens=2048, temperature=0.3)

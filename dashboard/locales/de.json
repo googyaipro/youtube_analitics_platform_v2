@@ -117,5 +117,20 @@
   "expander_executive_digest": "Executive-KI-Digest der Nische",
   "btn_hide_digest": "✕ Digest ausblenden",
   "confirm_delete_btn": "Löschen bestätigen",
-  "delete_channel_btn": "Kanal löschen"
+  "delete_channel_btn": "Kanal löschen",
+  "filter_channel": "Kanäle filtern",
+  "all_channels": "Alle Kanäle",
+  "filter_format": "Format",
+  "format_all": "Alle Formate",
+  "format_long": "🎬 Video",
+  "format_short": "📱 Shorts",
+  "sort_by": "Sortieren nach",
+  "sort_views": "👁️ Aufrufe",
+  "sort_outlier": "🚀 Viralität (x-Faktor)",
+  "sort_vph": "⚡ Geschwindigkeit (VPH)",
+  "sort_published": "🕒 Neueste (Datum)",
+  "sort_views_subs": "💎 Reichweite (Views/Subs)",
+  "metric_channel_median": "Kanal-Median:",
+  "metric_views_subs": "Reichweite:",
+  "metric_format": "Format:"
 }
