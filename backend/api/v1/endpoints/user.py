@@ -99,9 +99,8 @@ def generate_telegram_link(
     current_user.telegram_link_code = link_code
     db.commit()
 
-    bot_token = settings.TELEGRAM_BOT_TOKEN
-    # Extract bot username if available or use generic link
-    link_url = f"https://t.me/youtubeanalitics0_bot?start={link_code}"
+    bot_username = (settings.TELEGRAM_BOT_USERNAME or "").lstrip("@")
+    link_url = f"https://t.me/{bot_username}?start={link_code}" if bot_username else f"t.me/?start={link_code}"
 
     return TelegramLinkResponse(
         link_url=link_url,
