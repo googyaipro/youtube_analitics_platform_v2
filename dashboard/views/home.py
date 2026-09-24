@@ -189,9 +189,10 @@ else:
     df["youtube_link"] = "https://www.youtube.com/watch?v=" + df["video_id"].astype(str)
     df["badges_str"] = df["badges"].apply(lambda b: " ".join(b) if isinstance(b, list) else "")
 
-    # Top Video Chart (Horizontal Bar)
+    # Top Video Chart (Horizontal Bar with rich hover)
     top_chart_data = df.head(10).copy()
-    top_chart_data["short_title"] = top_chart_data["title"].apply(lambda x: x[:35] + "..." if len(str(x)) > 35 else str(x))
+    top_chart_data["short_title"] = top_chart_data["title"].apply(lambda x: x[:36] + "..." if len(str(x)) > 36 else str(x))
+    top_chart_data["fmt_label"] = top_chart_data["is_short"].apply(lambda s: "📱 Shorts" if s else "🎬 Video")
     
     fig = px.bar(
         top_chart_data,
@@ -199,38 +200,67 @@ else:
         y="short_title",
         orientation="h",
         color="outlier_score",
-        color_continuous_scale="Blues",
+        color_continuous_scale="Viridis",
+        custom_data=["title", "channel_title", "outlier_score", "velocity_vph", "duration_formatted", "fmt_label"],
         labels={"view_count": t("views"), "short_title": t("video_title"), "outlier_score": t("outlier_score")},
-        title=t("top_videos")
+        title=f"📊 {t('top_videos')}"
     )
-    fig.update_layout(yaxis={"autorange": "reversed"}, height=350, margin={"l": 0, "r": 20, "t": 40, "b": 20})
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_traces(
+        hovertemplate="<b>%{custom_data[0]}</b><br>" +
+                      "📺 Channel: <b>%{custom_data[1]}</b><br>" +
+                      "👁️ Views: <b>%{x:,.0f}</b><br>" +
+                      "🚀 Outlier: <b>%{custom_data[2]}x</b><br>" +
+                      "⚡ Velocity: <b>%{custom_data[3]} VPH</b><br>" +
+                      "⏱️ Runtime: <b>%{custom_data[4]}</b> (%{custom_data[5]})<extra></extra>"
+    )
+    fig.update_layout(
+        yaxis={"autorange": "reversed"},
+        height=360,
+        margin={"l": 0, "r": 20, "t": 40, "b": 20},
+        coloraxis_colorbar=dict(title=t("outlier_score"))
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"responsive": True, "displayModeBar": False})
 
     # Videos List & Factor Analysis Expanders
     st.markdown(f"#### 📋 {t('top_videos')} ({len(df)})")
     
     for idx, v in df.iterrows():
+        # Top-3 podium badges
+        if idx == 0:
+            rank_prefix = "🥇 #1"
+        elif idx == 1:
+            rank_prefix = "🥈 #2"
+        elif idx == 2:
+            rank_prefix = "🥉 #3"
+        else:
+            rank_prefix = f"#{idx+1}"
+
+        outlier_val = float(v.get('outlier_score', 1.0) or 1.0)
+        viral_flair = "🔥 " if outlier_val >= 2.0 else ""
         badges_display = f" `{v['badges_str']}`" if v["badges_str"] else ""
         dur_display = f" [{v.get('duration_formatted')}]" if v.get("duration_formatted") and v.get("duration_formatted") != "--:--" else ""
-        expander_title = f"#{idx+1} | {fmt_num(v.get('view_count', 0))} views | {v.get('outlier_score', 1.0)}x | {v.get('channel_title', '')} — «{v.get('title', '')}»{dur_display}{badges_display}"
+        
+        expander_title = f"{rank_prefix} | {fmt_num(v.get('view_count', 0))} views | {viral_flair}{outlier_val}x | {v.get('channel_title', '')} — «{v.get('title', '')}»{dur_display}{badges_display}"
         
         with st.expander(expander_title):
-            c_thumb, c_stats, c_ai = st.columns([2, 3, 4])
+            c_thumb, c_stats, c_ai = st.columns([2.5, 3.5, 4])
             
             with c_thumb:
                 if v.get("thumbnail_url"):
                     st.image(v["thumbnail_url"], use_container_width=True)
-                st.markdown(f"[▶️ YouTube]({v['youtube_link']})")
+                st.link_button(f"▶️ {t('watch_youtube_btn')}", v['youtube_link'], use_container_width=True)
 
             with c_stats:
                 fmt_tag = "📱 Shorts" if v.get("is_short") else "🎬 Video"
-                st.markdown(f"**Channel:** {v.get('channel_title', '')}")
+                st.markdown(f"**Channel:** `{v.get('channel_title', '')}`")
                 if v.get("subscriber_count"):
-                    st.markdown(f"**Subscribers:** {fmt_num(v.get('subscriber_count', 0))}")
+                    st.markdown(f"**Subscribers:** `{fmt_num(v.get('subscriber_count', 0))}`")
                 st.markdown(f"**{t('metric_format')}** `{fmt_tag}` ({v.get('duration_formatted', '--:--')})")
-                st.markdown(f"**Views:** {fmt_num(v.get('view_count', 0))}")
+                st.markdown(f"**Views:** **{fmt_num(v.get('view_count', 0))}**")
                 st.markdown(f"**{t('metric_channel_median')}** {fmt_num(v.get('channel_avg_views', 0))}")
-                st.markdown(f"**Multiplier (Outlier):** `{v.get('outlier_score', 1.0)}x`")
+                
+                multiplier_icon = "🔥 " if outlier_val >= 2.0 else ("📈 " if outlier_val >= 1.5 else "")
+                st.markdown(f"**Multiplier (Outlier):** `{multiplier_icon}{outlier_val}x`")
                 if v.get("views_to_subs_pct"):
                     st.markdown(f"**{t('metric_views_subs')}** `{v.get('views_to_subs_pct', 0.0)}%`")
                 st.markdown(f"**Velocity (VPH):** `{v.get('velocity_vph', 0.0)}`")
