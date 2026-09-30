@@ -1,92 +1,103 @@
-# 📖 Benutzerhandbuch & Analyse-Methodik
+# 📖 Vollständiges Benutzerhandbuch & Analyse-Methodik
 
 Willkommen bei der **YouTube Analytics Platform** — dem intelligenten System zur Konkurrenzbeobachtung, Erkennung viraler Anomalien und tiefgehenden KI-Erfolgsanalyse.
 
 ---
 
-## 1. 🚀 Systemarchitektur & Funktionsweise
+## 1. 🔑 Hinzufügen persönlicher API-Schlüssel (BYOK)
 
-Die Plattform löst die zentrale Herausforderung für Creator und Analysten: **Echte algorithmische Trends vom Hintergrundrauschen zu trennen**.
+Die Plattform nutzt eine sichere **BYOK-Architektur (Bring Your Own Key)**: Sie verwenden Ihre eigenen kostenlosen Kontingente von Google und YouTube. Alle Schlüssel werden mit **AES-256 (Fernet)** verschlüsselt und ausschließlich im Arbeitsspeicher für API-Anfragen entschlüsselt.
 
-1. **Thematische Kanal-Sets (Channel Sets)**:
-   - Gruppieren Sie Kanäle nach Nischen (z. B. *«KI-Tools»*, *«Krypto»*, *«Finanzen»*).
-   - Jedes Set wird isoliert analysiert, um spezifische Trends und Top-Performer zu identifizieren.
-2. **Direkte Anbindung an die YouTube Data API v3**:
-   - Ruft offizielle YouTube-Metriken ab: Aufrufe, Likes, Kommentare, Veröffentlichungsdaten und Videodauer.
-3. **Sichere BYOK-Architektur (Bring Your Own Key)**:
-   - Verwenden Sie Ihre eigenen API-Schlüssel für YouTube und Google Gemini.
-   - Alle Schlüssel werden mit **AES-256 (Fernet)** verschlüsselt und ausschließlich im Arbeitsspeicher für API-Anfragen entschlüsselt.
-4. **Automatische Telegram-Zustellung**:
-   - Erhalten Sie geplante Executive-Digests und Analysen direkt in Telegram basierend auf Ihrer Zeitzone.
+### Wo konfigurieren:
+Wählen Sie im linken Menü **«🔑 Profil»** (*Profile*).
 
----
+### Schritt 1. YouTube Data API v3 Schlüssel
+* **Zweck:** Abruf aktueller Metriken von YouTube (Aufrufe, Likes, Kommentare, Veröffentlichungsdaten, Abonnentenzahlen).
+* **Wo erhältlich (kostenlos):**
+  1. Öffnen Sie die [Google Cloud Console](https://console.cloud.google.com/).
+  2. Aktivieren Sie die Bibliothek **YouTube Data API v3** (*APIs & Services → Library*).
+  3. Erstellen Sie unter *Credentials* einen neuen API-Schlüssel (**«Create Credentials» → «API key»**).
+* **Hinzufügen:**
+  1. Schlüssel in **«1. YouTube Data API Schlüssel»** einfügen.
+  2. Auf **«🧪 Schlüssel prüfen»** klicken. Bei Erfolg wechselt der Status auf **`🟢 Gültig`**.
 
-## 2. ⚙️ Analysemethodik
-
-Absolute Aufrufzahlen sind trügerisch: 50.000 Aufrufe für einen Kanal mit 5 Millionen Abonnenten sind schwach, während es für einen Kanal mit 5.000 Abonnenten ein gigantischer viraler Durchbruch ist. Die Plattform nutzt **relative normierte Metriken**:
-
-1. **Historische Baseline-Berechnung**:
-   - Ermittelt den gleitenden Median der Aufrufe für jeden Kanal aus vergangenen Uploads.
-   - Ermöglicht faire Vergleiche zwischen kleinen und großen Kanälen.
-2. **Mehrdimensionale Anomalie-Erkennung**:
-   - Jedes Video wird anhand des Multiplikators zur Kanalnorm, der aktuellen Geschwindigkeit und der Interaktionsrate bewertet.
-3. **Format-Differenzierung**:
-   - Unterscheidung zwischen **🎬 Langformat-Videos** und **📱 Shorts** (bis 60 Sekunden), da sich deren Algorithmen grundlegend unterscheiden.
+### Schritt 2. Google Gemini API Schlüssel
+* **Zweck:** Interaktiver KI-Analyst, Video-Erfolgsanalysen und tägliche Nischen-Zusammenfassungen.
+* **Wo erhältlich (kostenlos):**
+  1. Öffnen Sie [Google AI Studio](https://aistudio.google.com/).
+  2. Klicken Sie auf **«Get API key» → «Create API key»**.
+* **Hinzufügen:**
+  1. Schlüssel in **«2. Gemini API Schlüssel»** einfügen.
+  2. Auf **«🧪 Schlüssel prüfen»** klicken.
+* **Schritt 3:** Unten auf **«💾 API-Schlüssel speichern»** klicken.
 
 ---
 
-## 3. 📊 Metriken & Indikatoren im Detail
+## 2. 🤖 Telegram-Benachrichtigungen einrichten
 
-### 🚀 Outlier Score (Faktor zur Kanalnorm)
-Der wichtigste Indikator für einen viralen Durchbruch:
-* **`1.0x` (Norm / Standard-Upload)**: Typische Resonanz der Stammzuschauer.
-* **`📈 1.5x – 1.9x` (Überdurchschnittlich / High Performer)**: 50% bis 90% mehr Aufrufe als üblich. Starkes Thema oder überzeugende Verpackung.
-* **`🚀 2.0x+` (Virale Anomalie / Hit-Ausreißer)**: Ein algorithmischer Durchbruch. Der YouTube-Empfehlungsalgorithmus spielt das Video weit über die Abonnentenbasis hinaus aus. Diese Videos bieten die besten Vorlagen für eigene Inhalte.
+Durch die Verknüpfung mit Telegram erhalten Sie geplante Executive-Digests und können Analysen direkt per Bot abrufen.
 
----
+### Schritt 1. Verknüpfungscode generieren
+1. Im Bereich **«🔑 Profil»** in der rechten Spalte auf **«🔗 Telegram verknüpfen»** klicken.
+2. Sie erhalten:
+   - Einen direkten Link: **`👉 Telegram-Bot öffnen`**.
+   - Einen 16-stelligen Einmalcode (z. B. `a1b2c3d4e5f67890`).
 
-### ⚡ Velocity (VPH — Aufrufe pro Stunde)
-Zeigt den aktuellen Echtzeit-Schwung:
-$$\text{VPH} = \frac{\text{Aufrufe}}{\max(\text{Videoalter in Stunden}, 1)}$$
-* **Warum VPH wichtig ist**: Ein 3 Monate altes Video mit 100.000 Aufrufen stagniert meist (~10 VPH). Ein 3 Stunden altes Video mit 6.000 Aufrufen erzielt **2.000 VPH** — und markiert den aktuellen Brennpunkt.
-* **Badge `⚡ 100+ views/h`**: Signalisiert anhaltendes algorithmisches Momentum.
+### Schritt 2. Im Bot aktivieren
+1. Öffnen Sie den Bot in Telegram und senden Sie:
+   ```text
+   /start <Ihr_16-stelliger_Code>
+   ```
+2. Der Bot bestätigt: *«🎉 Konto erfolgreich verknüpft!»* und stellt die Sprache automatisch ein.
+3. Im Web-Dashboard auf **«🔄 Status prüfen»** klicken.
 
----
-
-### 💬 Engagement Rate (ER% — Interaktionsrate)
-Misst die emotionale Resonanz und Diskussionsbereitschaft der Zuschauer:
-$$\text{ER} = \frac{\text{Likes} + \text{Kommentare}}{\text{Aufrufe}} \times 100\%$$
-* **`1.0% – 2.0%`**: Normalbereich für informative Inhalte.
-* **`💬 ER ≥ 2.5%`**: Sehr hohe Resonanz. Intensiver Austausch in den Kommentaren — ein starkes Signal für den YouTube-Algorithmus.
-
----
-
-### 💎 Views-to-Subscribers Ratio (Aufrufe zu Abonnenten %)
-Zeigt, wie weit das Video die eigene Abonnentenblase durchbricht:
-$$\text{Views-to-Subs} = \frac{\text{Aufrufe}}{\text{Abonnentenzahl des Kanals}} \times 100\%$$
-* **`💎 ≥ 100%`**: Das Video hat mehr Aufrufe als der Kanal Abonnenten hat. Es wird massiv an neue, kalte Zielgruppen ausgespielt.
+### Schritt 3. Zeitplan konfigurieren
+1. Gehen Sie zu **«⚙️ Kanal-Sets»** (*Channel Sets*).
+2. Wählen Sie das Set aus und stellen Sie die Sendezeit, Zeitzone und Wochentage ein.
+3. Aktivieren Sie **«✅ Automatischen Versand aktivieren»** und speichern Sie.
 
 ---
 
-## 4. 🧠 KI-Videoanalyse (Google Gemini)
+## 3. 📊 Felder, Metriken und Diagramme erklärt
 
-Klicken Sie auf **«🧠 AI Analyse»** oder senden Sie `/explain <nummer>` im Telegram-Bot:
-1. **🎯 Urteil (Verdict)**: Der wesentliche psychologische oder inhaltliche Grund für den Erfolg.
-2. **🎣 Hook & Verpackung**: Analyse von Thumbnail-Aufbau, Titel-Neugierde und den ersten 30 Sekunden.
-3. **🔥 Trend-Ausrichtung**: Welcher Makro- oder Mikrotrend in der Branche genutzt wurde.
-4. **💡 Handlungsempfehlung**: Wie Sie die Struktur und Thematik für eigene Videos adaptieren können.
+### «🏠 Startseite» (Home)
+* **KPI-Karten:** Kanäle im Set, analysierte Videos, Gesamtaufrufe, Durchschnitt pro Video und virale Hits ($Outlier \ge 2.0x$).
+* **Tabelle Top-Videos:**
+  - **Aufrufe:** Aktuelle Gesamtzahl.
+  - **Velocity (VPH — Aufrufe pro Stunde):** Echtzeit-Schwung. Zeigt, welche Videos der YouTube-Algorithmus aktuell aktiv empfiehlt.
+  - **Outlier Score (Faktor zur Kanalnorm):**
+    - `1.0x`: Kanal-Durchschnitt.
+    - `📈 1.5x – 1.9x`: Überdurchschnittlich (+50–90%).
+    - `🚀 2.0x+`: Viraler Durchbruch über die Abonnentenbasis hinaus.
+  - **Engagement Rate (ER%):** $\frac{\text{Likes} + \text{Kommentare}}{\text{Aufrufe}} \times 100\%$.
+  - **Badges:** `🎬 Video` / `📱 Shorts`, `🚀 Hit 2.5x`, `⚡ 250 Aufrufe/h`, `💎 140% zu Abos`.
+  - **«🧠 AI Analyse»:** Tiefgehender KI-Bericht (Urteil, Hook & Verpackung, Trend-Ausrichtung, Handlungsempfehlung).
+
+### «📈 Dynamik» (Dynamics)
+* **Balkendiagramme:** Abonnenten- und Aufrufverteilung der Konkurrenten.
+* **Virale Streumatrix (Scatter Chart):** Aufrufe vs. Outlier Score / VPH — trennt alte Videos von aktuellen Trend-Raketen.
+* **Format-Verteilung:** Anteil Shorts vs. Langformat.
+
+### «⚙️ Kanal-Sets»
+* Verwaltung thematischer Nischen und Hinzufügen von Kanälen via `@handle`, URL oder Channel-ID.
+
+### «💬 KI-Analyst»
+* Direkte strategische Fragen an Gemini zum aktuellen Kanal-Set.
+
+### «📋 Logs & KI-Diagnose»
+* Detaillierte Prompt- und Antwort-Telemetrie mit genauer Modellversion und Antwortzeit.
 
 ---
 
-## 5. 🤖 Telegram-Befehle
+## 4. 🤖 Telegram-Befehle
 
-| Befehl | Funktion |
+| Befehl | Aktion |
 | :--- | :--- |
 | `/menu` | Interaktives Befehlsmenü mit Buttons öffnen |
-| `/top` | Top-10-Videos mit Badges und Direktanalyse-Buttons |
-| `/explain <nr>` | Tiefgehende Gemini-Erfolgsanalyse für Video Nr. starten |
-| `/digest` | Aktuellen Executive-KI-Digest der Nische generieren |
-| `/sets` | Kanal-Sets anzeigen und aktives Set wechseln |
+| `/top` | Top 10 Videos mit Badges und Analyse-Buttons |
+| `/explain <nr>` | Tiefgehende KI-Erfolgsanalyse starten |
+| `/digest` | Aktuellen Executive-KI-Digest generieren |
+| `/sets` | Kanal-Sets anzeigen und auswählen |
 | `/status` | Status der API-Schlüssel und Zeitpläne prüfen |
 | `/lang` | Sprache anpassen (`ru`, `en`, `de`, `fi`, `ka`) |
 | `/help` | Übersicht aller Befehle anzeigen |

@@ -1,96 +1,150 @@
-# 📖 User Guide & Analytics Methodology
+# 📖 Complete User Guide & Analytics Methodology
 
 Welcome to **YouTube Analytics Platform** — an intelligent system for competitor tracking, viral anomaly detection, and deep AI-powered video breakdown.
 
 ---
 
-## 1. 🚀 Architecture & How the System Works
+## 1. 🔑 Adding Personal API Keys (BYOK)
 
-The platform solves the central challenge for creators and analysts: **separating genuine algorithmic momentum from background noise**.
+The platform operates on a secure **BYOK (Bring Your Own Key)** architecture: you utilize your own free quotas from Google and YouTube. All keys are encrypted using symmetric **AES-256 (Fernet)** and decrypted strictly in memory at the moment an API call is made.
 
-1. **Thematic Channel Sets**:
-   - Organize competitor channels into isolated niches (e.g., *'AI Tools'*, *'Crypto'*, *'Fintech'*).
-   - Each set is analyzed independently to reveal niche dynamics and top performers.
-2. **Direct YouTube Data API v3 Integration**:
-   - Queries the official YouTube API to fetch real-time video metrics: views, likes, comments, publication timestamps, and duration.
-3. **Secure BYOK (Bring Your Own Key) Security**:
-   - Use your own personal YouTube Data API and Google Gemini API keys.
-   - Keys are encrypted with symmetric **AES-256 (Fernet)** and decrypted exclusively in-memory when making API calls.
-4. **Automated Telegram Delivery**:
-   - Receive executive AI digests and alerts right in your Telegram messenger according to your custom schedule and timezone.
+### Where to Configure:
+Navigate to **'🔑 Profile'** in the left sidebar.
 
----
+### Step 1. YouTube Data API v3 Key
+* **Purpose:** Collects up-to-date YouTube metrics (views, likes, comments, publication timestamps, duration, subscriber counts).
+* **Where to Obtain (Free):**
+  1. Visit [Google Cloud Console](https://console.cloud.google.com/).
+  2. Create a project and enable the **YouTube Data API v3** library (*APIs & Services → Library*).
+  3. Under *Credentials*, click **'Create Credentials' → 'API key'**.
+* **How to Add:**
+  1. Paste your key into **'1. YouTube Data API Key'** (format: `AIzaSy...`).
+  2. Click **'🧪 Test Key'**. The platform runs a test request. Upon success, the status turns **`🟢 Valid`**.
 
-## 2. ⚙️ How the System Analyzes Data (Methodology)
-
-Raw view counts can be misleading: 50,000 views for a creator with 5 million subscribers is underperformance, while for a channel with 5,000 subscribers, it represents a massive viral breakout. The platform applies **normalized relative analysis**:
-
-1. **Channel Historical Baseline Calculation**:
-   - Computes rolling median and baseline performance for each creator across recent uploads.
-   - Normalizes comparisons across channels of drastically different audience sizes.
-2. **Multi-Vector Anomaly Detection**:
-   - Every video is evaluated across baseline multiplier, real-time velocity, and engagement depth.
-3. **Format Classification**:
-   - Videos are split into **🎬 Long-form Videos** and **📱 Shorts** (<= 60 seconds) to account for differing feed distribution algorithms.
+### Step 2. Google Gemini API Key
+* **Purpose:** Powers the Interactive AI Analyst, deep qualitative video breakdowns, and daily niche digests.
+* **Where to Obtain (Free):**
+  1. Open [Google AI Studio](https://aistudio.google.com/).
+  2. Click **'Get API key' → 'Create API key'**.
+* **How to Add:**
+  1. Paste your key into **'2. Gemini API Key'** (format: `AIzaSy...`).
+  2. Click **'🧪 Test Key'** to verify connectivity with Gemini.
+* **Step 3:** Click the blue **'💾 Save API Keys'** button at the bottom. Your keys are securely encrypted and saved.
 
 ---
 
-## 3. 📊 Key Metrics & Indicators Explained
+## 2. 🤖 Subscribing to Telegram Scheduled Delivery
 
-### 🚀 Outlier Score (Baseline Multiplier)
-The definitive indicator of algorithmic breakout, measuring how many times a video outperformed the channel's standard baseline:
-* **`1.0x` (Baseline / Standard Upload)**: Performance aligns with normal expectations for core subscribers.
-* **`📈 1.5x – 1.9x` (Above Baseline / High Performer)**: The video outperformed standard benchmarks by 50%–90%.
-* **`🚀 2.0x+` (Viral Hit / Outlier Breakout)**: An algorithmic anomaly. YouTube's recommendation engine (Browse Features & Suggested Videos) pushed the content well beyond existing subscribers. Analyze these videos to replicate successful hooks and positioning.
+Linking Telegram allows you to receive automated morning/evening executive digests and perform on-demand AI breakdowns via bot commands.
 
----
+### Step 1. Generate Binding Code in Profile
+1. On the **'🔑 Profile'** page, locate the right-hand card **'🤖 Telegram Integration'**.
+2. Click **'🔗 Link Telegram Account'**.
+3. The platform generates:
+   - A direct link: **`👉 Open Telegram Bot`**.
+   - A unique 16-character one-time binding code (e.g., `a1b2c3d4e5f67890`).
 
-### ⚡ Velocity (VPH — Views Per Hour)
-Measures active real-time momentum:
-$$\text{VPH} = \frac{\text{View Count}}{\max(\text{Age in Hours}, 1)}$$
-* **Why VPH Matters**: A 3-month-old video with 100,000 views is stagnant (~10 VPH). A video released 3 hours ago with 6,000 views has a velocity of **2,000 VPH** — pinpointing today's breakout trend.
-* **Badge `⚡ 100+ views/h`**: Highlights videos with strong ongoing algorithmic momentum.
+### Step 2. Activate in Telegram
+1. Click the link or open your bot in Telegram.
+2. Send:
+   ```text
+   /start <your_16_char_code>
+   ```
+   *(or simply send the 16-character code as a regular chat message)*.
+3. The bot confirms binding: *'🎉 Account successfully linked!'*, adapts command descriptions to your language, and clears redundant keyboards.
+4. Back in the web dashboard, click **'🔄 Check Status'** to view the `🟢 Linked` badge and test via **'🔔 Send Test Notification'**.
 
----
-
-### 💬 Engagement Rate (ER%)
-Reflects audience emotional resonance and willingness to interact:
-$$\text{ER} = \frac{\text{Likes} + \text{Comments}}{\text{Views}} \times 100\%$$
-* **`1.0% – 2.0%`**: Standard engagement for informational content.
-* **`💬 ER ≥ 2.5%`**: High resonance. Viewers are actively commenting, debating, and liking — a key ranking signal for YouTube algorithms.
-
----
-
-### 💎 Views-to-Subscribers Ratio (% Views / Subs)
-Measures penetration outside the subscriber base:
-$$\text{Views-to-Subs} = \frac{\text{Views}}{\text{Channel Subscriber Count}} \times 100\%$$
-* **`< 20%`**: Reaching only a subset of core subscribers.
-* **`20% – 80%`**: Healthy penetration of existing subscriber base.
-* **`💎 ≥ 100%`**: The video surpassed the channel's entire subscriber count, penetrating broad cold traffic.
+### Step 3. Configure Digest Schedule
+1. Open **'⚙️ Channel Sets'**.
+2. Select or create a channel set and configure the **Scheduler**:
+   - **Delivery Time:** choose your preferred time (e.g., `09:30` or `18:00`).
+   - **Timezone:** set your local timezone (e.g., `America/New_York`, `Europe/London`, `UTC`).
+   - **Days of Week:** select delivery days (e.g., Mon–Fri or all 7 days).
+   - **Checkbox:** enable **`✅ Enable Scheduled Auto-Digest`**.
+3. Click **'Save Channel Set'**. The bot will deliver digests on schedule.
 
 ---
 
-## 4. 🧠 AI Video Breakdown (Google Gemini)
+## 3. 📊 Dashboard Fields, Metrics & Charts Explained
 
-Click **'🧠 AI Breakdown'** in the dashboard or send `/explain <number>` to the Telegram bot. Gemini analyzes the video across 4 strategic pillars:
+### '🏠 Home' (Overview & Factor Analysis)
 
-1. **🎯 Verdict**:
-   - The fundamental driver behind the video's success (psychological trigger, paradigm shift, high utility).
-2. **🎣 Hook & Packaging**:
-   - Breakdown of thumbnail packaging, title intrigue formula, and first 30-second retention mechanics.
-3. **🔥 Trend Alignment**:
-   - Macro or micro industry wave capitalized on by the creator.
-4. **💡 Creator Takeaway**:
-   - Actionable guidelines on how you can adapt this structure and topic for your own content.
+#### 1. Top KPI Summary Cards:
+* **Channels in Set:** count of tracked competitor channels in the active set.
+* **Videos Analyzed:** total video dataset size collected.
+* **Total Views:** gross attention volume accumulated by the set.
+* **Average per Video:** arithmetic mean of views (niche benchmark).
+* **Viral Hits:** count of breakout videos with Outlier Score $\ge 2.0x$.
+
+#### 2. 'Top Videos & Factor Analysis' Table:
+* **Video Title & Channel:** title and creator with direct links to YouTube.
+* **Views:** current absolute view count.
+* **Velocity (VPH — Views Per Hour):**
+  $$\text{VPH} = \frac{\text{Views}}{\max(\text{Age in Hours}, 1)}$$
+  *Measures real-time momentum.* A 3-month-old video with 100,000 views has ~10 VPH (stagnant). A 3-hour-old video with 6,000 views has **2,000 VPH** — YouTube's recommendation engine is actively promoting it right now.
+* **Outlier Score (Baseline Multiplier):**
+  $$\text{Outlier} = \frac{\text{Video Views}}{\text{Channel Historical Median Views}}$$
+  *The core anomaly indicator:*
+  - `1.0x` — Normal performance for the channel's subscriber base.
+  - `📈 1.5x – 1.9x` — Above baseline (+50–90%). Strong topic interest.
+  - `🚀 2.0x+` — Viral breakout. Promoted to broad external audiences via Browse and Suggested features.
+* **Engagement Rate (ER%):**
+  $$\text{ER} = \frac{\text{Likes} + \text{Comments}}{\text{Views}} \times 100\%$$
+  - Baseline: `1.0% – 2.0%`.
+  - `💬 ER ≥ 2.5%`: high emotional resonance, strong audience debate.
+* **Badges:**
+  - `🎬 Video` / `📱 Shorts` — content format.
+  - `🚀 Hit 2.5x` — outlier multiplier over channel baseline.
+  - `⚡ 250 views/h` — high ongoing velocity.
+  - `💎 140% of subs` — views exceeded total subscribers (broke out of core bubble).
+* **'🧠 AI Breakdown' Button:** initiates Gemini deep breakdown (Verdict, Hook & Packaging, Trend Alignment, Creator Takeaway).
 
 ---
 
-## 5. 🤖 Telegram Bot Commands
+### '📈 Dynamics' (Niche Visualization)
+
+* **🏆 Top Channels by Subscribers (Bar Chart):** audience size distribution across competitors.
+* **👁️ Channel Aggregate Views (Bar Chart):** reveals creators generating actual attention volume vs. stagnant sub counts.
+* **🎯 Virality Scatter Matrix (Views vs. Outlier Score / VPH):**
+  - Each bubble represents a single video.
+  - *Lower zone:* routine standard uploads.
+  - *Lower right:* high historical views with near-zero current velocity.
+  - *Upper zone:* high-velocity viral outliers worth dissecting.
+* **📊 Format Breakdown (Pie Chart):** ratio of Shorts vs. long-form video distribution.
+
+---
+
+### '⚙️ Channel Sets'
+
+* **Set Name & Description:** thematic category (e.g., *'AI Automation'*, *'Fintech Podcasts'*).
+* **'📺 Channels in Set' Tab:**
+  - Add Channel: supports `@handle` (e.g., `@mkbhd`), direct channel URL, or Channel ID (`UC...`).
+  - Channel cards: avatar, subscriber count, total views, and sync timestamp.
+  - **'Sync Now' Button:** triggers on-demand data refresh via YouTube API.
+
+---
+
+### '💬 AI Analyst' (Interactive Consultation)
+* Freeform prompt field to query Gemini with the active channel set context:
+  - *'Which angles drove the highest velocity this week?'*
+  - *'Compare title hooks across the top 3 channels.'*
+  - *'Generate 5 video concepts adapting the week's top viral formulas.'*
+
+---
+
+### '📋 Logs & AI Diagnostics' (System Logs)
+* **AI & LLM Telemetry:** prompt text, exact model version, latency in seconds, raw JSON, and parsed breakdown.
+* **System Events:** Telegram webhook payloads, autonomous scheduler triggers, and background workers.
+* **Live Model Tester:** execute real-time test prompts to verify key validity and response latency.
+
+---
+
+## 4. 🤖 Telegram Bot Quick Commands
 
 | Command | Action |
 | :--- | :--- |
-| `/menu` | Open clean interactive menu with buttons |
-| `/top` | View top 10 videos with badges and instant explain buttons |
+| `/menu` | Open interactive menu with buttons |
+| `/top` | Top 10 videos with badges and breakdown buttons |
 | `/explain <#>` | Run deep AI breakdown on video # from the top list |
 | `/digest` | Generate on-demand Executive AI Niche Digest |
 | `/sets` | View channel sets and switch active set |

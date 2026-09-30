@@ -1,92 +1,103 @@
-# 📖 Käyttöopas ja analyysimenetelmät
+# 📖 Täydellinen käyttöopas ja analyysimenetelmät
 
 Tervetuloa **YouTube Analytics Platform** -alustalle — älykkääseen järjestelmään kilpailijaseurantaan, viraalianomalioiden havaitsemiseen ja syvälliseen tekoälyanalyysiin.
 
 ---
 
-## 1. 🚀 Järjestelmän arkkitehtuuri ja toimintaperiaate
+## 1. 🔑 Henkilökohtaisten API-avainten lisääminen (BYOK)
 
-Alusta ratkaisee sisällöntuottajien ja analyytikoiden keskeisen haasteen: **todellisten algoritmisten trendien erottamisen taustakohinasta**.
+Alusta toimii turvallisella **BYOK (Bring Your Own Key)** -mallilla: käytät omia maksuttomia Googlen ja YouTuben kiintiöitäsi. Kaikki avaimet salataan symmetrisellä **AES-256 (Fernet)** -salauksella ja puretaan vain välimuistissa API-pyynnön ajaksi.
 
-1. **Kanavasetit (Channel Sets)**:
-   - Ryhmittele kilpailijoiden kanavat aihepiireittäin (esim. *«Tekoälytyökalut»*, *«Krypto»*, *«Talous»*).
-   - Jokainen setti analysoidaan erillisenä kokonaisuutena parhaiden videoiden ja trendien löytämiseksi.
-2. **Suora YouTube Data API v3 -integraatio**:
-   - Hakee reaaliaikaiset metriikat: katselukerrat, tykkäykset, kommentit, julkaisuajat ja videoiden kestot.
-3. **Turvallinen BYOK (Bring Your Own Key) -arkkitehtuuri**:
-   - Käytä omia YouTube- ja Google Gemini -avaimiasi.
-   - Avaimet salataan symmetrisellä **AES-256 (Fernet)** -salauksella ja puretaan vain muistissa pyynnön ajaksi.
-4. **Automaattiset Telegram-koosteet**:
-   - Saat ajastetut johdon yhteenvedot ja hälytykset suoraan Telegramiin haluamassasi aikavyöhykkeessä.
+### Missä määritetään:
+Siirry vasemmasta valikosta kohtaan **«🔑 Profiili»** (*Profile*).
 
----
+### Vaihe 1. YouTube Data API v3 -avain
+* **Tarkoitus:** Hakee tuoreimmat YouTube-tiedot (katselukerrat, tykkäykset, kommentit, julkaisuajat, tilaajamäärät).
+* **Mistä saa (ilmainen):**
+  1. Siirry [Google Cloud Consoleen](https://console.cloud.google.com/).
+  2. Ota käyttöön **YouTube Data API v3** (*APIs & Services → Library*).
+  3. Luo uusi API-avain kohdassa *Credentials* (**«Create Credentials» → «API key»**).
+* **Lisääminen:**
+  1. Liitä avain kenttään **«1. YouTube Data API -avain»**.
+  2. Napsauta **«🧪 Testaa avain»**. Onnistumisen jälkeen tila muuttuu muotoon **`🟢 Kelvollinen`**.
 
-## 2. ⚙️ Analyysimenetelmä
-
-Pelkät katselukerrat voivat johtaa harhaan: 50 000 katselukertaa miljoonakanavalle on heikko tulos, kun taas 5 000 tilaajan kanavalle se on massiivinen viraalimenestys. Siksi alusta käyttää **suhteellisia normitettuja mittareita**:
-
-1. **Kanavan perustason laskenta (Baseline)**:
-   - Laskee jokaiselle kanavalle katselukertojen liukuvan mediaanin aiemmista julkaisuista.
-   - Mahdollistaa eri kokoisten kanavien tasapuolisen vertailun.
-2. **Monimuuttuja-anomalia-analyysi**:
-   - Jokainen video arvioidaan suhteessa kanavan perustasoon, katselunopeuteen ja sitoutumisasteeseen.
-3. **Sisältömuodon jaottelu**:
-   - Erottaa toisistaan **🎬 Pitkät videot** ja **📱 Shorts-videot** (enintään 60 s), joiden suosittelualgoritmit toimivat täysin eri tavalla.
+### Vaihe 2. Google Gemini API -avain
+* **Tarkoitus:** Interaktiivinen tekoäly-analyytikko, videoiden viraalianalyysit ja päivittäiset koosteet.
+* **Mistä saa (ilmainen):**
+  1. Avaa [Google AI Studio](https://aistudio.google.com/).
+  2. Napsauta **«Get API key» → «Create API key»**.
+* **Lisääminen:**
+  1. Liitä avain kenttään **«2. Gemini API -avain»**.
+  2. Napsauta **«🧪 Testaa avain»**.
+* **Vaihe 3:** Napsauta alhaalta sinistä painiketta **«💾 Tallenna API-avaimet»**.
 
 ---
 
-## 3. 📊 Keskeiset mittarit ja niiden merkitys
+## 2. 🤖 Telegram-jakelun tilaaminen
 
-### 🚀 Outlier Score (Perustasokerroin / Anomaliapisteet)
-Tärkein mittari videon algoritmiselle läpimurrolle:
-* **`1.0x` (Perustaso / Normaali video)**: Vastaa kanavan vakiokatsojakunnan normaalia kiinnostusta.
-* **`📈 1.5x – 1.9x` (Yli tason / High Performer)**: 50–90 % enemmän katselukertoja kuin kanavalla yleensä.
-* **`🚀 2.0x+` (Viraalihitti / Poikkeama)**: Algoritminen läpimurto. YouTube on alkanut suositella videota tilaajakunnan ulkopuolelle. Nämä videot kannattaa tutkia tarkkaan ideoiden ja koukkujen löytämiseksi.
+Telegramin yhdistäminen mahdollistaa ajastettujen koosteiden vastaanottamisen ja videoiden pika-analyysin suoraan botin kautta.
 
----
+### Vaihe 1. Yhdistämiskoodin luominen
+1. Napsauta profiilisivun oikeassa sarakkeessa painiketta **«🔗 Yhdistä Telegram»**.
+2. Järjestelmä luo:
+   - Suoran linkin: **`👉 Avaa Telegram-botti`**.
+   - 16-merkkisen kertakäyttökoodin (esim. `a1b2c3d4e5f67890`).
 
-### ⚡ Velocity (VPH — Katselukertaa tunnissa)
-Mittaa videon reaaliaikaista algoritmista vauhtia:
-$$\text{VPH} = \frac{\text{Katselukerrat}}{\max(\text{Videon ikä tunteina}, 1)}$$
-* **Miksi VPH on tärkeä**: 3 kuukautta vanha video 100 000 katselukerralla on jo hiipunut (~10 VPH). 3 tuntia sitten julkaistu video 6 000 katselukerralla etenee vauhdilla **2 000 VPH** — osoittaen tämän hetken polttavimman trendin.
-* **Merkintä `⚡ 100+ views/h`**: Kertoo voimakkaasta jatkuvasta liikennevirrasta.
+### Vaihe 2. Aktivointi Telegramissa
+1. Avaa botti Telegramissa ja lähetä:
+   ```text
+   /start <16-merkkinen_koodi>
+   ```
+2. Botti vahvistaa: *«🎉 Tili yhdistetty onnistuneesti!»* ja asettaa käyttöliittymän kielen.
+3. Napsauta verkkopaneelissa **«🔄 Tarkista tila»**.
 
----
-
-### 💬 Engagement Rate (ER% — Sitoutumisaste)
-Kuvaa yleisön reaktiota ja halua osallistua keskusteluun:
-$$\text{ER} = \frac{\text{Tykkäykset} + \text{Kommentit}}{\text{Katselukerrat}} \times 100\%$$
-* **`1.0% – 2.0%`**: Tyypillinen taso asiasisällölle.
-* **`💬 ER ≥ 2.5%`**: Korkea reaktio. Yleisö keskustelee aktiivisesti — vahva signaali YouTuben suosittelualgoritmille.
-
----
-
-### 💎 Views-to-Subscribers Ratio (Katselukerrat suhteessa tilaajiin %)
-Osoittaa videon kyvyn murtautua kanavan oman tilaajakuplan ulkopuolelle:
-$$\text{Views-to-Subs} = \frac{\text{Katselukerrat}}{\text{Kanavan tilaajamäärä}} \times 100\%$$
-* **`💎 ≥ 100%`**: Videolla on enemmän katselukertoja kuin kanavalla on tilaajia. Video leviää tehokkaasti kylmälle yleisölle.
+### Vaihe 3. Aikataulun määrittäminen
+1. Siirry sivulle **«⚙️ Kanavasetit»** (*Channel Sets*).
+2. Valitse setti ja aseta lähetysaika, aikavyöhyke ja viikonpäivät.
+3. Ota käyttöön **«✅ Ota automaattinen lähetys käyttöön»** ja tallenna.
 
 ---
 
-## 4. 🧠 Tekoälypohjainen analyysi (Google Gemini)
+## 3. 📊 Kenttien, mittareiden ja kaavioiden selitykset
 
-Napsauta **«🧠 AI Analyysi»** -painiketta tai lähetä Telegramissa `/explain <numero>`:
-1. **🎯 Tuomio (Verdict)**: Menestyksen keskeinen psykologinen tai sisällöllinen syy.
-2. **🎣 Koukku ja paketoiti**: Pikkukuvan, otsikon ja ensimmäisten 30 sekunnin tehokkuusanalyysi.
-3. **🔥 Trendin hyödyntäminen**: Mitä toimialan makro- tai mikrotrendiä video hyödyntää.
-4. **💡 Suositus sisällöntuottajalle**: Konkreettiset vinkit idean soveltamiseen omissa videoissa.
+### «🏠 Etusivu» (Home)
+* **KPI-kortit:** Kanavat setissä, analysoidut videot, kokonaiskatselut, keskiarvo per video ja viraalihitit ($Outlier \ge 2.0x$).
+* **Top-videoiden taulukko:**
+  - **Katselukerrat:** Nykyinen kokonaismäärä.
+  - **Velocity (VPH — Katselua tunnissa):** Reaaliaikainen vauhti, jota YouTube aktiivisesti suosittelee juuri nyt.
+  - **Outlier Score (Perustasokerroin):**
+    - `1.0x`: Kanavan normaali taso.
+    - `📈 1.5x – 1.9x`: Yli tason (+50–90%).
+    - `🚀 2.0x+`: Viraaliläpimurto tilaajakunnan ulkopuolelle.
+  - **Engagement Rate (ER%):** $\frac{\text{Tykkäykset} + \text{Kommentit}}{\text{Katselukerrat}} \times 100\%$.
+  - **Merkinnät:** `🎬 Video` / `📱 Shorts`, `🚀 Hitti 2.5x`, `⚡ 250 kats/h`, `💎 140% tilaajiin`.
+  - **«🧠 AI Analyysi»:** Syvällinen raportti (Tuomio, Koukku ja paketoiti, Trendin hyödyntäminen, Suositus).
+
+### «📈 Dynamiikka» (Dynamics)
+* **Pylväskaaviot:** Tilaajien ja katselukertojen jakautuminen kilpailijoiden kesken.
+* **Viraalihajontakaavio (Scatter Chart):** Katselukerrat vs. Outlier Score / VPH.
+* **Muotojakauma:** Shorts- ja pitkien videoiden suhde.
+
+### «⚙️ Kanavasetit»
+* Kanavaryhmien hallinta ja kanavien lisääminen tunnisteella (`@handle`), URL-osoitteella tai kanavatunnuksella.
+
+### «💬 Tekoäly-analyytikko»
+* Suora strateginen kyselytyökalu Geminille aktiivisesta kanavasetistä.
+
+### «📋 Lokit ja tekoälydiagnostiikka»
+* Kyselyjen ja vastausten täydellinen telemetria malliversioineen ja viiveineen.
 
 ---
 
-## 5. 🤖 Telegram-botin komennot
+## 4. 🤖 Telegram-botin komennot
 
 | Komento | Toiminto |
 | :--- | :--- |
 | `/menu` | Avaa interaktiivinen komentovalikko |
-| `/top` | Näytä top 10 videot ja pika-analyysipainikkeet |
-| `/explain <nro>` | Suorita syvällinen Gemini-analyysi videosta |
+| `/top` | Näytä top 10 videot ja analyysipainikkeet |
+| `/explain <nro>` | Suorita syvällinen tekoälyanalyysi videosta |
 | `/digest` | Luo tuore johdon tekoäly-yhteenveto |
 | `/sets` | Tarkastele ja vaihda kanavasettiä |
 | `/status` | Tarkista API-avainten ja aikataulujen tila |
 | `/lang` | Vaihda kieltä (`ru`, `en`, `de`, `fi`, `ka`) |
-| `/help` | Komentoluettelo ja pikaohje |
+| `/help` | Pikaohje komennoista |
