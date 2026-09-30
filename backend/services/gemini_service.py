@@ -236,6 +236,9 @@ class GeminiService:
                         if res.status_code == 200:
                             latency_ms = int((time.perf_counter() - start_time) * 1000)
                             data = res.json()
+                            model_version = data.get("modelVersion") or detected_model
+                            if "modelVersion" in data:
+                                cls._discovered_models[clean_key] = data["modelVersion"]
                             candidates = data.get("candidates", [])
                             if candidates:
                                 parts = candidates[0].get("content", {}).get("parts", [])
@@ -244,7 +247,8 @@ class GeminiService:
                                     return {
                                         "success": True,
                                         "text": text,
-                                        "model": detected_model,
+                                        "model": model_version,
+                                        "modelVersion": model_version,
                                         "endpoint": sanitized_url,
                                         "http_status": 200,
                                         "latency_ms": latency_ms,
@@ -261,6 +265,9 @@ class GeminiService:
                                 if alt_res.status_code == 200:
                                     latency_ms = int((time.perf_counter() - start_time) * 1000)
                                     data = alt_res.json()
+                                    model_version = data.get("modelVersion") or detected_model
+                                    if "modelVersion" in data:
+                                        cls._discovered_models[clean_key] = data["modelVersion"]
                                     candidates = data.get("candidates", [])
                                     if candidates:
                                         parts = candidates[0].get("content", {}).get("parts", [])
@@ -268,7 +275,8 @@ class GeminiService:
                                             return {
                                                 "success": True,
                                                 "text": parts[0].get("text", "").strip(),
-                                                "model": detected_model,
+                                                "model": model_version,
+                                                "modelVersion": model_version,
                                                 "endpoint": sanitized_url,
                                                 "http_status": 200,
                                                 "latency_ms": latency_ms,
@@ -440,9 +448,11 @@ class GeminiService:
 
         if diag["success"] and diag["text"]:
             parsed, parse_method = cls._parse_explain_response(diag["text"])
+            actual_model = diag.get("modelVersion") or diag.get("model") or PRIMARY_GEMINI_MODEL
             if parsed:
                 parsed["is_ai"] = True
-                parsed["model"] = diag["model"]
+                parsed["model"] = actual_model
+                parsed["modelVersion"] = actual_model
                 parsed["latency_ms"] = diag["latency_ms"]
                 parsed["parse_method"] = parse_method
                 parsed["prompt_used"] = prompt
@@ -451,7 +461,7 @@ class GeminiService:
                 log_status = "SUCCESS" if parse_method in ("json_loads", "outermost_braces") else "PARSE_ERROR_RECOVERED"
                 LogService.log_ai_call(
                     operation="explain_video",
-                    model=diag["model"],
+                    model=actual_model,
                     status=log_status,
                     latency_ms=diag["latency_ms"],
                     user_id=user_id,
@@ -470,6 +480,8 @@ class GeminiService:
             # If text could not be parsed at all
             res = cls._rule_based_explanation(target_video, target_language)
             res["is_ai"] = False
+            res["model"] = actual_model
+            res["modelVersion"] = actual_model
             res["fallback_reason"] = "Ответ модели не удалось разобрать как структуру"
             res["prompt_used"] = prompt
             res["raw_response"] = diag["text"]
@@ -494,13 +506,16 @@ class GeminiService:
         # If call failed (HTTP error, connection error, etc.)
         res = cls._rule_based_explanation(target_video, target_language)
         res["is_ai"] = False
+        fallback_model = diag.get("modelVersion") or diag.get("model") or PRIMARY_GEMINI_MODEL
+        res["model"] = fallback_model
+        res["modelVersion"] = fallback_model
         err_msg = diag.get("error") or "Сбой вызова Gemini API"
         res["fallback_reason"] = f"Ошибка Gemini: {err_msg}"
         res["prompt_used"] = prompt
         res["raw_response"] = diag.get("error")
         LogService.log_ai_call(
             operation="explain_video",
-            model=diag["model"],
+            model=fallback_model,
             status="ERROR",
             latency_ms=diag["latency_ms"],
             user_id=user_id,
@@ -741,6 +756,10 @@ class GeminiService:
             except Exception as e:
                 logger.warning(f"Failed to parse ask_analyst JSON: {e}")
                 parsed = {"answer": diag["text"], "key_findings": []}
+
+            parsed["is_ai"] = True
+            parsed["model"] = diag["model"]
+            parsed["modelVersion"] = diag.get("modelVersion") or diag["model"]
 
             LogService.log_ai_call(
                 operation="ask_analyst",

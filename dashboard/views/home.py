@@ -292,9 +292,10 @@ else:
                     exp = st.session_state[explain_key]
                     is_ai = exp.get("is_ai", False)
                     if is_ai:
-                        m_name = exp.get("model", "gemini-flash-latest")
+                        m_name = exp.get("modelVersion") or exp.get("model", "gemini-flash-latest")
                         m_lat = exp.get("latency_ms", 0)
                         st.caption(f"🧠 **Gemini AI Breakdown** (`{m_name}` • {m_lat} ms)")
+                        st.markdown(f"🤖 **Model Version:** `{m_name}`")
                     else:
                         fallback_rsn = exp.get("fallback_reason") or "Эвристический расчет метрик"
                         st.warning(f"⚠️ **Эвристический экспресс-анализ**: {fallback_rsn}")
@@ -309,6 +310,8 @@ else:
                     # Diagnostic Prompt & Raw Response Expander
                     if exp.get("prompt_used") or exp.get("raw_response"):
                         with st.expander("🔍 Диагностика вызова ИИ (Промпт и Ответ модели)"):
+                            m_ver = exp.get("modelVersion") or exp.get("model", "N/A")
+                            st.markdown(f"**Активная модель (modelVersion):** `{m_ver}`")
                             if exp.get("prompt_used"):
                                 st.markdown("**Отправленный промпт:**")
                                 st.code(exp["prompt_used"], language="markdown")

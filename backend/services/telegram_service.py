@@ -1040,6 +1040,9 @@ class TelegramService:
         ch_title = target_video.get("channel_title") or "Channel"
         vid_id = target_video.get("video_id")
 
+        model_name = explanation.get("modelVersion") or explanation.get("model")
+        model_part = f"\n\n🤖 **Model Version:** `{model_name}`" if model_name else ""
+
         msg = (
             f"{header}\n"
             f"«{vid_title}» ({ch_title})\n\n"
@@ -1048,6 +1051,7 @@ class TelegramService:
             f"{hook_lbl}\n{explanation.get('hook_analysis') or ''}\n\n"
             f"{trend_lbl}\n{explanation.get('trend_alignment') or ''}\n\n"
             f"{takeaway_lbl}\n{explanation.get('actionable_takeaway') or ''}"
+            f"{model_part}"
         )
 
         kb_btns = []

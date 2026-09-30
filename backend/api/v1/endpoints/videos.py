@@ -160,5 +160,6 @@ def explain_video(
             "published_at": str(target_video.get("published_at"))
         },
         "badges": target_video.get("badges", []),
-        "explanation": explanation
+        "explanation": explanation,
+        "modelVersion": explanation.get("modelVersion") or explanation.get("model") or "gemini-flash-latest"
     }
