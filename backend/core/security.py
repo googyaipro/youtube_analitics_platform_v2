@@ -21,9 +21,10 @@ security_scheme = HTTPBearer(auto_error=False)
 
 
 # --- AES Encryption for User API Keys (BYOK) ---
-def _get_fernet_key(secret: str) -> bytes:
-    """Derive a valid 32-byte url-safe base64 key from secret."""
-    digest = hashlib.sha256(secret.encode()).digest()
+def _get_fernet_key(secret: Optional[str] = None) -> bytes:
+    """Derive a valid 32-byte url-safe base64 key from secret or fallback to JWT_SECRET."""
+    key_material = (secret or settings.ENCRYPTION_SECRET or settings.JWT_SECRET or "yap_encryption_fallback_key_2026").strip()
+    digest = hashlib.sha256(key_material.encode()).digest()
     return base64.urlsafe_b64encode(digest)
 
 fernet = Fernet(_get_fernet_key(settings.ENCRYPTION_SECRET))

@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     )
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
-    ENCRYPTION_SECRET: str = Field(
-        default="8vX_8uM_6eN_4rT_2wQ_0zY_9xW_7vU_5sR_3qP_1oN=",
+    ENCRYPTION_SECRET: Optional[str] = Field(
+        default=None,
         validation_alias=AliasChoices("ENCRYPTION_SECRET", "ENCRYPTION_KEY")
     )
     ADMIN_SECRET: str = Field(
