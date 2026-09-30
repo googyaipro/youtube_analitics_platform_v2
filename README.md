@@ -195,9 +195,9 @@ youtube-analitics-platform/
 | `DATABASE_URL` | Строка подключения SQLAlchemy | `postgresql://yap_user:pass@postgres:5432/youtube_analytics` |
 | `SECRET_KEY` | Секретный ключ для подписи JWT-токенов (32 байта) | `c92739f75470d02bce0eb8e652fb6a256a5dbd4e8b35...` |
 | `ENCRYPTION_KEY` | Ключ Fernet (AES-256 base64) для шифрования ключей BYOK | `X9s65f-4v-T7t2Zg3B7qjV6G4j0kE9h1pL5y2rA4uB8=` |
-| `TELEGRAM_BOT_TOKEN` | Токен Telegram-бота от BotFather | `8824791628:AAGcvPcC3lCZ3SziCO4fpqVoOhYjEdoudh8` |
-| `TELEGRAM_BOT_USERNAME` | Имя пользователя Telegram-бота (без `@`) | `youtubeanalitics0_bot` |
-| `TELEGRAM_WEBHOOK_SECRET` | Секретный токен для проверки вебхука Telegram | `216e54ccb062bce4dbe9cc9e2eced4d2` |
+| `TELEGRAM_BOT_TOKEN` | Токен Telegram-бота от BotFather | `123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ` |
+| `TELEGRAM_BOT_USERNAME` | Имя пользователя Telegram-бота (без `@`) | `your_bot_username` |
+| `TELEGRAM_WEBHOOK_SECRET` | Секретный токен для проверки вебхука Telegram | `your_random_secret_hex` |
 | `DOKPLOY_WEB_DOMAIN` | Домен веб-интерфейса | `yap.oxyjet.win` |
 | `DOKPLOY_API_DOMAIN` | Домен REST API и вебхука | `api.yap.oxyjet.win` |
 | `BACKEND_API_URL` | Внутренний или публичный URL API для Streamlit | `http://backend:8080/api/v1` |

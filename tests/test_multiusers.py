@@ -552,7 +552,7 @@ def test_telegram_test_notification():
         # 5. Valid secret token is accepted
         r_wh_valid = client.post(
             "/api/v1/telegram/webhook",
-            headers={"X-Telegram-Bot-Api-Secret-Token": "216e54ccb062bce4dbe9cc9e2eced4d2"},
+            headers={"X-Telegram-Bot-Api-Secret-Token": test_settings.TELEGRAM_WEBHOOK_SECRET},
             json={"update_id": 100, "message": {"text": "/help", "chat": {"id": 12345678}}}
         )
         assert r_wh_valid.status_code == 200
