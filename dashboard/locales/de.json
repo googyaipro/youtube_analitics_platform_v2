@@ -192,5 +192,10 @@
   "logs_test_btn": "Testabfrage ausführen",
   "logs_test_success": "Gemini-Abfrage erfolgreich ausgeführt!",
   "btn_confirm": "Bestätigen",
-  "btn_cancel": "Abbrechen"
+  "btn_cancel": "Abbrechen",
+  "help_sidebar_title": "Hilfe & Methodik",
+  "help_modal_title": "Plattform-Handbuch: Architektur, Methodik & Metriken",
+  "help_modal_btn": "🔍 Vollbild-Hilfe öffnen",
+  "help_toggle_btn": "📖 Hilfe & Metriken",
+  "btn_close": "Schließen"
 }

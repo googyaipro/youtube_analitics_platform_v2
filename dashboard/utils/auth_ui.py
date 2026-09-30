@@ -3,9 +3,11 @@ import streamlit as st
 try:
     from dashboard.utils.api_client import get_api_client
     from dashboard.utils.i18n import t, get_current_language, set_language, render_language_selector
+    from dashboard.utils.help_drawer import render_help_drawer
 except ModuleNotFoundError:
     from utils.api_client import get_api_client
     from utils.i18n import t, get_current_language, set_language, render_language_selector
+    from utils.help_drawer import render_help_drawer
 
 
 def _get_query_token() -> Optional[str]:
@@ -164,6 +166,7 @@ def require_auth() -> dict:
     if not token:
         # Render language selector on auth screen too!
         render_language_selector(sidebar=True)
+        render_help_drawer()
         render_auth_modal()
         st.stop()
 
@@ -188,6 +191,7 @@ def require_auth() -> dict:
             st.caption(user.get("full_name"))
 
         render_language_selector(sidebar=False)
+        render_help_drawer()
 
         if st.button(f"🚪 {t('logout')}", use_container_width=True):
             st.session_state.pop("access_token", None)

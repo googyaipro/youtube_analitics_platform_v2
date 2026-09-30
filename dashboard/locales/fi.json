@@ -192,5 +192,10 @@
   "logs_test_btn": "Suorita testipyyntö",
   "logs_test_success": "Gemini-pyyntö suoritettu onnistuneesti!",
   "btn_confirm": "Vahvista",
-  "btn_cancel": "Peruuta"
+  "btn_cancel": "Peruuta",
+  "help_sidebar_title": "Ohje ja menetelmät",
+  "help_modal_title": "Alustan opas: Arkkitehtuuri, Menetelmät ja Mittarit",
+  "help_modal_btn": "🔍 Avaa koko opas",
+  "help_toggle_btn": "📖 Ohje ja mittarit",
+  "btn_close": "Sulje opas"
 }

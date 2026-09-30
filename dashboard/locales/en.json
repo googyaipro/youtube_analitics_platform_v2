@@ -192,5 +192,10 @@
   "logs_test_btn": "Run Test Query",
   "logs_test_success": "Gemini query executed successfully!",
   "btn_confirm": "Confirm",
-  "btn_cancel": "Cancel"
+  "btn_cancel": "Cancel",
+  "help_sidebar_title": "Help & Methodology",
+  "help_modal_title": "Platform Guide: Architecture, Methodology & Metrics",
+  "help_modal_btn": "🔍 Expand Fullscreen Guide",
+  "help_toggle_btn": "📖 Help & Metrics",
+  "btn_close": "Close Guide"
 }
