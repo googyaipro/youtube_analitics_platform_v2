@@ -25,6 +25,59 @@ LANGUAGE_NAMES: Dict[str, str] = {
     "ka": "ქართული 🇬🇪",
 }
 
+COMMANDS_BY_LANG: Dict[str, List[Dict[str, str]]] = {
+    "ru": [
+        {"command": "menu", "description": "Главное меню с кнопками"},
+        {"command": "digest", "description": "Свежий AI-дайджест ниши"},
+        {"command": "top", "description": "Топ-10 видео активного набора"},
+        {"command": "explain", "description": "AI-разбор успеха ролика"},
+        {"command": "sets", "description": "Наборы каналов и переключение"},
+        {"command": "status", "description": "Статус API-ключей и расписания"},
+        {"command": "lang", "description": "Смена языка (ru, en, de, fi, ka)"},
+        {"command": "help", "description": "Справка по командам"}
+    ],
+    "en": [
+        {"command": "menu", "description": "Interactive command menu"},
+        {"command": "digest", "description": "Latest executive niche AI digest"},
+        {"command": "top", "description": "Top 10 videos of active set"},
+        {"command": "explain", "description": "AI video success breakdown"},
+        {"command": "sets", "description": "Channel sets & switch active"},
+        {"command": "status", "description": "Check API keys & schedule"},
+        {"command": "lang", "description": "Change language (ru, en, de, fi, ka)"},
+        {"command": "help", "description": "Commands help"}
+    ],
+    "de": [
+        {"command": "menu", "description": "Interaktives Befehlsmenü"},
+        {"command": "digest", "description": "Aktuellen Executive-KI-Digest generieren"},
+        {"command": "top", "description": "Top 10 Videos des aktiven Sets"},
+        {"command": "explain", "description": "Tiefgehende Gemini-Erfolgsanalyse"},
+        {"command": "sets", "description": "Kanal-Sets anzeigen und auswählen"},
+        {"command": "status", "description": "Status der API-Schlüssel prüfen"},
+        {"command": "lang", "description": "Sprache ändern (ru, en, de, fi, ka)"},
+        {"command": "help", "description": "Befehlshilfe"}
+    ],
+    "fi": [
+        {"command": "menu", "description": "Interaktiivinen komentovalikko"},
+        {"command": "digest", "description": "Luo tuore johdon tekoäly-yhteenveto"},
+        {"command": "top", "description": "Aktiivisen setin top 10 videota"},
+        {"command": "explain", "description": "Syvällinen Gemini-analyysi videosta"},
+        {"command": "sets", "description": "Tarkastele ja valitse kanavasetti"},
+        {"command": "status", "description": "Tarkista API-avaimet ja aikataulu"},
+        {"command": "lang", "description": "Vaihda kieltä (ru, en, de, fi, ka)"},
+        {"command": "help", "description": "Komentojen ohje"}
+    ],
+    "ka": [
+        {"command": "menu", "description": "ინტერაქტიული მენიუ"},
+        {"command": "digest", "description": "ნიშის AI დაიჯესტის გენერირება"},
+        {"command": "top", "description": "აქტიური ნაკრების ტოპ 10 ვიდეო"},
+        {"command": "explain", "description": "ვიდეოს წარმატების Gemini ანალიზი"},
+        {"command": "sets", "description": "არხების ნაკრებების ნახვა და არჩევა"},
+        {"command": "status", "description": "API გასაღებების სტატუსი"},
+        {"command": "lang", "description": "ენის შეცვლა (ru, en, de, fi, ka)"},
+        {"command": "help", "description": "დახმარება"}
+    ]
+}
+
 TG_MESSAGES: Dict[str, Dict[str, str]] = {
     "account_linked": {
         "ru": "🎉 **Аккаунт успешно привязан!**\n\nДобро пожаловать, **{email}**!\nТеперь вам будут приходить персональные AI-дайджесты по вашим наборам каналов с веб-платформы: {dash_url}\n\nИспользуйте команду /help или меню для списка возможностей.",
@@ -392,71 +445,52 @@ class TelegramService:
             return text_tpl
 
     @staticmethod
-    def get_main_reply_keyboard(lang: str = "en") -> Dict[str, Any]:
-        """Generate persistent reply keyboard with command buttons in user language."""
-        labels = {
-            "ru": {
-                "top": "📊 Топ-10 видео",
-                "digest": "📢 AI-Дайджест",
-                "sets": "📁 Наборы каналов",
-                "explain": "🧠 AI-Разбор",
-                "status": "⚙️ Статус ключей",
-                "lang": "🌐 Сменить язык",
-                "menu": "📋 Главное меню",
-                "help": "❓ Помощь"
-            },
-            "en": {
-                "top": "📊 Top 10 Videos",
-                "digest": "📢 AI Digest",
-                "sets": "📁 Channel Sets",
-                "explain": "🧠 AI Breakdown",
-                "status": "⚙️ Status & Keys",
-                "lang": "🌐 Change Language",
-                "menu": "📋 Main Menu",
-                "help": "❓ Help"
-            },
-            "de": {
-                "top": "📊 Top 10 Videos",
-                "digest": "📢 KI-Digest",
-                "sets": "📁 Kanal-Sets",
-                "explain": "🧠 KI-Analyse",
-                "status": "⚙️ Status & Schlüssel",
-                "lang": "🌐 Sprache ändern",
-                "menu": "📋 Hauptmenü",
-                "help": "❓ Hilfe"
-            },
-            "fi": {
-                "top": "📊 Top 10 Videot",
-                "digest": "📢 Tekoäly-kooste",
-                "sets": "📁 Kanavasetit",
-                "explain": "🧠 Tekoäly-analyysi",
-                "status": "⚙️ Tila ja avaimet",
-                "lang": "🌐 Vaihda kieltä",
-                "menu": "📋 Päävalikko",
-                "help": "❓ Ohje"
-            },
-            "ka": {
-                "top": "📊 ტოპ 10 ვიდეო",
-                "digest": "📢 AI დაიჯესტი",
-                "sets": "📁 არხების ნაკრები",
-                "explain": "🧠 AI ანალიზი",
-                "status": "⚙️ სტატუსი და გასაღებები",
-                "lang": "🌐 ენის შეცვლა",
-                "menu": "📋 მთავარი მენიუ",
-                "help": "❓ დახმარება"
-            }
-        }
-        l = labels.get(lang, labels["en"])
-        return {
-            "keyboard": [
-                [{"text": l["top"]}, {"text": l["digest"]}],
-                [{"text": l["sets"]}, {"text": l["explain"]}],
-                [{"text": l["status"]}, {"text": l["lang"]}],
-                [{"text": l["menu"]}, {"text": l["help"]}]
-            ],
-            "resize_keyboard": True,
-            "is_persistent": True
-        }
+    def get_remove_keyboard() -> Dict[str, Any]:
+        """Dismiss persistent reply keyboard on Telegram client."""
+        return {"remove_keyboard": True}
+
+    @classmethod
+    def get_main_reply_keyboard(cls, lang: str = "en") -> Dict[str, Any]:
+        """Backward-compatible helper to dismiss persistent reply keyboard."""
+        return cls.get_remove_keyboard()
+
+    @classmethod
+    def sync_chat_commands(cls, chat_id: int | str, lang: str = "en") -> bool:
+        """Synchronize native Telegram side-menu commands for this specific chat in user's language."""
+        bot_token = settings.TELEGRAM_BOT_TOKEN
+        if not bot_token or " " in bot_token:
+            return True
+
+        cmds = COMMANDS_BY_LANG.get(lang, COMMANDS_BY_LANG["en"])
+        try:
+            chat_id_int = int(chat_id)
+        except (ValueError, TypeError):
+            chat_id_int = None
+
+        if not chat_id_int:
+            return False
+
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                client.post(
+                    f"https://api.telegram.org/bot{bot_token}/setMyCommands",
+                    json={
+                        "commands": cmds,
+                        "scope": {"type": "chat", "chat_id": chat_id_int}
+                    }
+                )
+                client.post(
+                    f"https://api.telegram.org/bot{bot_token}/setChatMenuButton",
+                    json={
+                        "chat_id": chat_id_int,
+                        "menu_button": {"type": "commands"}
+                    }
+                )
+                return True
+        except Exception as e:
+            logger.warning(f"Could not sync chat commands for {chat_id}: {e}")
+            return False
+
 
     @classmethod
     def get_inline_menu(cls, lang: str = "en", dash_url: str = "") -> Dict[str, Any]:
@@ -767,61 +801,11 @@ class TelegramService:
                 result = res.json()
                 logger.info(f"Telegram setWebhook result: {result}")
 
-                commands_en = [
-                    {"command": "menu", "description": "Interactive command menu"},
-                    {"command": "digest", "description": "Latest executive niche AI digest"},
-                    {"command": "top", "description": "Top 10 videos of active set"},
-                    {"command": "explain", "description": "AI video success breakdown"},
-                    {"command": "sets", "description": "Channel sets & switch active"},
-                    {"command": "status", "description": "Check API keys & schedule"},
-                    {"command": "lang", "description": "Change language (ru, en, de, fi, ka)"},
-                    {"command": "help", "description": "Commands help"}
-                ]
-                commands_ru = [
-                    {"command": "menu", "description": "Главное меню с кнопками"},
-                    {"command": "digest", "description": "Свежий AI-дайджест ниши"},
-                    {"command": "top", "description": "Топ-10 видео активного набора"},
-                    {"command": "explain", "description": "AI-разбор успеха ролика"},
-                    {"command": "sets", "description": "Наборы каналов и переключение"},
-                    {"command": "status", "description": "Статус API-ключей и расписания"},
-                    {"command": "lang", "description": "Смена языка (ru, en, de, fi, ka)"},
-                    {"command": "help", "description": "Справка по командам"}
-                ]
-                commands_de = [
-                    {"command": "menu", "description": "Interaktives Befehlsmenü"},
-                    {"command": "digest", "description": "Aktuellen Executive-KI-Digest generieren"},
-                    {"command": "top", "description": "Top 10 Videos des aktiven Sets"},
-                    {"command": "explain", "description": "Tiefgehende Gemini-Erfolgsanalyse"},
-                    {"command": "sets", "description": "Kanal-Sets anzeigen und auswählen"},
-                    {"command": "status", "description": "Status der API-Schlüssel prüfen"},
-                    {"command": "lang", "description": "Sprache ändern"},
-                    {"command": "help", "description": "Befehlshilfe"}
-                ]
-                commands_fi = [
-                    {"command": "menu", "description": "Interaktiivinen komentovalikko"},
-                    {"command": "digest", "description": "Luo tuore johdon tekoäly-yhteenveto"},
-                    {"command": "top", "description": "Aktiivisen setin top 10 videota"},
-                    {"command": "explain", "description": "Syvällinen Gemini-analyysi videosta"},
-                    {"command": "sets", "description": "Tarkastele ja valitse kanavasetti"},
-                    {"command": "status", "description": "Tarkista API-avaimet ja aikataulu"},
-                    {"command": "lang", "description": "Vaihda kieltä"},
-                    {"command": "help", "description": "Komentojen ohje"}
-                ]
-                commands_ka = [
-                    {"command": "menu", "description": "ინტერაქტიული მენიუ"},
-                    {"command": "digest", "description": "ნიშის AI დაიჯესტის გენერირება"},
-                    {"command": "top", "description": "აქტიური ნაკრების ტოპ 10 ვიდეო"},
-                    {"command": "explain", "description": "ვიდეოს წარმატების Gemini ანალიზი"},
-                    {"command": "sets", "description": "არხების ნაკრებების ნახვა და არჩევა"},
-                    {"command": "status", "description": "API გასაღებების სტატუსი"},
-                    {"command": "lang", "description": "ენის შეცვლა"},
-                    {"command": "help", "description": "დახმარება"}
-                ]
-                client.post(f"https://api.telegram.org/bot{bot_token}/setMyCommands", json={"commands": commands_en})
-                client.post(f"https://api.telegram.org/bot{bot_token}/setMyCommands", json={"commands": commands_ru, "language_code": "ru"})
-                client.post(f"https://api.telegram.org/bot{bot_token}/setMyCommands", json={"commands": commands_de, "language_code": "de"})
-                client.post(f"https://api.telegram.org/bot{bot_token}/setMyCommands", json={"commands": commands_fi, "language_code": "fi"})
-                client.post(f"https://api.telegram.org/bot{bot_token}/setMyCommands", json={"commands": commands_ka, "language_code": "ka"})
+                for lang_code, cmds in COMMANDS_BY_LANG.items():
+                    if lang_code == "en":
+                        client.post(f"https://api.telegram.org/bot{bot_token}/setMyCommands", json={"commands": cmds})
+                    else:
+                        client.post(f"https://api.telegram.org/bot{bot_token}/setMyCommands", json={"commands": cmds, "language_code": lang_code})
                 client.post(f"https://api.telegram.org/bot{bot_token}/setChatMenuButton", json={"menu_button": {"type": "commands"}})
         except Exception as e:
             logger.error(f"Error registering Telegram webhook: {e}")
@@ -868,7 +852,7 @@ class TelegramService:
             user_email=user.email,
             db=db
         )
-        cls.send_message(chat_id, digest_text, reply_markup=cls.get_main_reply_keyboard(user_lang))
+        cls.send_message(chat_id, digest_text, reply_markup={"remove_keyboard": True})
         return True
 
     @classmethod
@@ -1101,7 +1085,7 @@ class TelegramService:
         elif data == "menu:sets":
             return cls._process_sets_command(db, user, chat_id, user_lang, dash_url)
         elif data == "menu:explain":
-            cls.send_message(chat_id, cls._t("explain_prompt", user_lang), reply_markup=cls.get_main_reply_keyboard(user_lang))
+            cls.send_message(chat_id, cls._t("explain_prompt", user_lang), reply_markup={"remove_keyboard": True})
             return True
         elif data.startswith("explain:"):
             vid_num = data.replace("explain:", "").strip()
@@ -1112,7 +1096,7 @@ class TelegramService:
             cls.send_message(chat_id, cls._t("choose_language", user_lang), reply_markup=cls.get_language_inline_keyboard(user_lang))
             return True
         elif data == "menu:help":
-            cls.send_message(chat_id, cls._t("help", user_lang, dash_url=dash_url), reply_markup=cls.get_main_reply_keyboard(user_lang))
+            cls.send_message(chat_id, cls._t("help", user_lang, dash_url=dash_url), reply_markup={"remove_keyboard": True})
             return True
         elif data == "menu:back":
             cls.send_message(chat_id, cls._t("menu_header", user_lang), reply_markup=cls.get_inline_menu(user_lang, dash_url))
@@ -1122,11 +1106,12 @@ class TelegramService:
             if new_lang in ("ru", "en", "de", "fi", "ka"):
                 user.language = new_lang
                 db.commit()
+                cls.sync_chat_commands(chat_id, new_lang)
                 friendly_name = cls.get_language_name(new_lang)
                 cls.send_message(
                     chat_id,
                     cls._t("lang_updated", new_lang, lang=friendly_name),
-                    reply_markup=cls.get_main_reply_keyboard(new_lang)
+                    reply_markup={"remove_keyboard": True}
                 )
                 cls.send_message(
                     chat_id,
@@ -1140,7 +1125,7 @@ class TelegramService:
             if target_set:
                 user.active_set_id = target_set.id
                 db.commit()
-                cls.send_message(chat_id, cls._t("set_switched", user_lang, name=target_set.name), reply_markup=cls.get_main_reply_keyboard(user_lang))
+                cls.send_message(chat_id, cls._t("set_switched", user_lang, name=target_set.name), reply_markup={"remove_keyboard": True})
             return True
 
         return True
@@ -1205,10 +1190,11 @@ class TelegramService:
                 target_user.language = user_lang
                 db.commit()
                 db.refresh(target_user)
+                cls.sync_chat_commands(chat_id, user_lang)
                 cls.send_message(
                     chat_id,
                     cls._t("account_linked", user_lang, email=target_user.email, dash_url=dash_url),
-                    reply_markup=cls.get_main_reply_keyboard(user_lang)
+                    reply_markup={"remove_keyboard": True}
                 )
                 cls.send_message(
                     chat_id,
@@ -1228,13 +1214,15 @@ class TelegramService:
             if raw_text.startswith("/start"):
                 cls.send_message(
                     chat_id,
-                    cls._t("unlinked_start", default_lang, dash_url=dash_url)
+                    cls._t("unlinked_start", default_lang, dash_url=dash_url),
+                    reply_markup={"remove_keyboard": True}
                 )
                 return True
 
             cls.send_message(
                 chat_id,
-                cls._t("unlinked_msg", default_lang, dash_url=dash_url)
+                cls._t("unlinked_msg", default_lang, dash_url=dash_url),
+                reply_markup={"remove_keyboard": True}
             )
             return True
 
@@ -1242,10 +1230,11 @@ class TelegramService:
         user_lang = user.language if user.language in ("ru", "en", "de", "fi", "ka") else default_lang
 
         if raw_text.startswith("/start"):
+            cls.sync_chat_commands(chat_id, user_lang)
             cls.send_message(
                 chat_id,
                 cls._t("welcome_back", user_lang, email=user.email),
-                reply_markup=cls.get_main_reply_keyboard(user_lang)
+                reply_markup={"remove_keyboard": True}
             )
             cls.send_message(
                 chat_id,
@@ -1272,9 +1261,9 @@ class TelegramService:
             if target_set:
                 user.active_set_id = target_set.id
                 db.commit()
-                cls.send_message(chat_id, cls._t("set_switched", user_lang, name=target_set.name), reply_markup=cls.get_main_reply_keyboard(user_lang))
+                cls.send_message(chat_id, cls._t("set_switched", user_lang, name=target_set.name), reply_markup={"remove_keyboard": True})
             else:
-                cls.send_message(chat_id, cls._t("set_not_found", user_lang))
+                cls.send_message(chat_id, cls._t("set_not_found", user_lang), reply_markup={"remove_keyboard": True})
             return True
 
         if raw_text.startswith("/explain"):
@@ -1287,11 +1276,12 @@ class TelegramService:
                 new_lang = parts[1].lower()
                 user.language = new_lang
                 db.commit()
+                cls.sync_chat_commands(chat_id, new_lang)
                 friendly_name = cls.get_language_name(new_lang)
                 cls.send_message(
                     chat_id,
                     cls._t("lang_updated", new_lang, lang=friendly_name),
-                    reply_markup=cls.get_main_reply_keyboard(new_lang)
+                    reply_markup={"remove_keyboard": True}
                 )
                 cls.send_message(
                     chat_id,
@@ -1299,13 +1289,14 @@ class TelegramService:
                     reply_markup=cls.get_inline_menu(new_lang, dash_url)
                 )
             else:
-                cls.send_message(chat_id, cls._t("lang_help", user_lang))
+                cls.send_message(chat_id, cls._t("lang_help", user_lang), reply_markup={"remove_keyboard": True})
             return True
 
         # Normalized action matching across all 5 languages & slash commands
         action = cls._resolve_command_action(raw_text)
 
         if action == "menu":
+            cls.sync_chat_commands(chat_id, user_lang)
             cls.send_message(
                 chat_id,
                 cls._t("menu_header", user_lang),
@@ -1317,7 +1308,7 @@ class TelegramService:
             cls.send_message(
                 chat_id,
                 cls._t("help", user_lang, dash_url=dash_url),
-                reply_markup=cls.get_main_reply_keyboard(user_lang)
+                reply_markup={"remove_keyboard": True}
             )
             return True
 
@@ -1334,7 +1325,7 @@ class TelegramService:
             cls.send_message(
                 chat_id,
                 cls._t("explain_prompt", user_lang),
-                reply_markup=cls.get_main_reply_keyboard(user_lang)
+                reply_markup={"remove_keyboard": True}
             )
             return True
 
@@ -1350,5 +1341,5 @@ class TelegramService:
             return True
 
         else:
-            cls.send_message(chat_id, cls._t("unknown_cmd", user_lang), reply_markup=cls.get_main_reply_keyboard(user_lang))
+            cls.send_message(chat_id, cls._t("unknown_cmd", user_lang), reply_markup={"remove_keyboard": True})
             return True
