@@ -548,7 +548,7 @@ class GeminiService:
             {
                 "title": v.get("title"),
                 "channel": v.get("channel_title"),
-                "channel_subs": f"{v.get('subscriber_count', 0):,}" if v.get("subscriber_count") else "Н/Д",
+                "channel_subs": f"{v.get('subscriber_count', 0):,}" if v.get("subscriber_count") else ("Н/Д" if target_language == "ru" else "N/A"),
                 "format": "Shorts" if v.get("is_short") else f"Video ({v.get('duration_formatted', '--:--')})",
                 "views": f"{v.get('view_count', 0):,}",
                 "channel_norm": f"{v.get('channel_avg_views', 0):,}",
@@ -837,6 +837,114 @@ class GeminiService:
                 f"1) Формат: {'Короткое видео (Shorts)' if is_short else f'Горизонтальное видео ({dur_str})'}; "
                 f"2) Для глубокого контентного анализа смысловых триггеров и сценария подключите ключ Gemini в настройках Профиля; "
                 f"3) При создании похожих материалов ориентируйтесь на темп {vph} VPH как бенчмарк."
+            )
+        elif target_language == "de":
+            if outlier >= 2.0:
+                verdict = (
+                    f"Das Video «{title}» ({ch_title}) erzielte ein herausragendes Ergebnis: "
+                    f"{outlier}x über dem Kanal-Median ({views:,} Aufrufe vs. Baseline {avg:,}). "
+                    f"Die aktuelle Geschwindigkeit von {vph} VPH zeigt eine starke Algorithmus-Empfehlung."
+                )
+            elif outlier >= 1.2:
+                verdict = (
+                    f"Das Video «{title}» ({ch_title}) liegt über dem Kanaldurchschnitt ({outlier}x über Baseline {avg:,}). "
+                    f"Geschwindigkeit: {vph} VPH."
+                )
+            elif outlier >= 0.8:
+                verdict = (
+                    f"Das Video «{title}» ({views:,} Aufrufe) liegt im normalen Kanalbereich "
+                    f"({outlier}x des Medians {avg:,}). Geschwindigkeit: {vph} VPH."
+                )
+            else:
+                verdict = (
+                    f"Das Video «{title}» erreichte {views:,} Aufrufe, was unter dem Kanal-Median {avg:,} liegt ({outlier}x). "
+                    f"Geschwindigkeit: {vph} VPH."
+                )
+
+            hook_analysis = (
+                f"Format: {'Shorts' if is_short else 'Langvideo'} ({dur_str}), Titellänge: {title_len} Zeichen. "
+                f"Engagement-Rate (ER): {er}%."
+            )
+            trend_alignment = (
+                f"Geschwindigkeit: {vph} VPH. Verhältnis Aufrufe zu Abonnenten: {views_to_subs}%. "
+                f"Publikumsreaktion: {'hohe Aktivität' if er >= 2.5 else 'im Normalbereich'}."
+            )
+            actionable_takeaway = (
+                f"1) Format: {'Shorts' if is_short else f'Standard-Video ({dur_str})'}; "
+                f"2) Für eine tiefe semantische Skript- und Klickraten-Analyse hinterlegen Sie Ihren Gemini-API-Schlüssel im Profil; "
+                f"3) Nutzen Sie das Tempo von {vph} VPH als Richtwert für diese Nische."
+            )
+        elif target_language == "fi":
+            if outlier >= 2.0:
+                verdict = (
+                    f"Video «{title}» ({ch_title}) saavutti läpimurtotuloksen: "
+                    f"{outlier}x yli kanavan mediaanin ({views:,} katselukertaa vs. perustaso {avg:,}). "
+                    f"Nykyinen nopeus {vph} VPH osoittaa vahvaa suosittelualgoritmin tukea."
+                )
+            elif outlier >= 1.2:
+                verdict = (
+                    f"Video «{title}» ({ch_title}) ylittää kanavan keskiarvon ({outlier}x yli perustason {avg:,}). "
+                    f"Nopeus: {vph} VPH."
+                )
+            elif outlier >= 0.8:
+                verdict = (
+                    f"Video «{title}» ({views:,} katselukertaa) sijoittuu kanavan tavanomaiseen vaihteluväliin "
+                    f"({outlier}x mediaanista {avg:,}). Nopeus: {vph} VPH."
+                )
+            else:
+                verdict = (
+                    f"Video «{title}» keräsi {views:,} katselukertaa, mikä alittaa kanavan mediaanin {avg:,} ({outlier}x). "
+                    f"Nopeus: {vph} VPH."
+                )
+
+            hook_analysis = (
+                f"Muoto: {'Shorts' if is_short else 'Pitkä video'} ({dur_str}), otsikon pituus: {title_len} merkkiä. "
+                f"Sitoutumisaste (ER): {er}%."
+            )
+            trend_alignment = (
+                f"Nopeus: {vph} VPH. Katselujen suhde tilaajiin: {views_to_subs}%. "
+                f"Yleisön aktiivisuus: {'korkea sitoutuminen' if er >= 2.5 else 'tavanomainen taso'}."
+            )
+            actionable_takeaway = (
+                f"1) Muoto: {'Shorts' if is_short else f'Perusvideo ({dur_str})'}; "
+                f"2) Syvällistä semanttista käsikirjoitus- ja CTR-analyysiä varten liitä Gemini API -avain profiilissasi; "
+                f"3) Käytä tämän videon {vph} VPH -nopeutta vertailukohtana tälle nichelle."
+            )
+        elif target_language == "ka":
+            if outlier >= 2.0:
+                verdict = (
+                    f"ვიდეომ «{title}» ({ch_title}) აჩვენა გარღვევის შედეგი: "
+                    f"არხის მედიანაზე {outlier}x მეტი ({views:,} ნახვა საბაზისო {avg:,}-ის წინააღმდეგ). "
+                    f"მიმდინარე ტემპი {vph} VPH მიუთითებს ალგორითმის აქტიურ მხარდაჭერაზე."
+                )
+            elif outlier >= 1.2:
+                verdict = (
+                    f"ვიდეო «{title}» ({ch_title}) აღემატება არხის საშუალო მაჩვენებელს ({outlier}x ნორმაზე {avg:,}). "
+                    f"ტემპი: {vph} VPH."
+                )
+            elif outlier >= 0.8:
+                verdict = (
+                    f"ვიდეო «{title}» ({views:,} ნახვა) იმყოფება არხის სტანდარტულ დიაპაზონში "
+                    f"({outlier}x მედიანიდან {avg:,}). ტემპი: {vph} VPH."
+                )
+            else:
+                verdict = (
+                    f"ვიდეომ «{title}» დააგროვა {views:,} ნახვა, რაც არხის მედიანაზე {avg:,} ნაკლებია ({outlier}x). "
+                    f"ტემპი: {vph} VPH."
+                )
+
+            hook_analysis = (
+                f"ფორმატი: {'Shorts' if is_short else 'ვიდეო'} ({dur_str}), სათაურის სიგრძე: {title_len} სიმბოლო. "
+                f"ჩართულობა (ER): {er}%."
+            )
+            trend_alignment = (
+                f"სიჩქარე: {vph} VPH. ნახვების თანაფარდობა გამომწერებთან: {views_to_subs}%. "
+                f"აუდიტორიის აქტიურობა: {'მაღალი' if er >= 2.5 else 'სტანდარტული'}."
+            )
+            actionable_takeaway = (
+                f"1) ფორმატი: {'Shorts' if is_short else f'სტანდარტული ვიდეო ({dur_str})'}; "
+                f"2) სცენარისა და CTR ფაქტორების ღრმა ანალიზისთვის დააკავშირეთ Gemini API გასაღები პროფილში; "
+                f"3) გამოიყენეთ {vph} VPH სიჩქარე, როგორც ორიენტირი ამ ნიშისთვის."
             )
         else:
             if outlier >= 2.0:
