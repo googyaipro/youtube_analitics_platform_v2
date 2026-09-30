@@ -1,0 +1,317 @@
+import os
+import sys
+
+# Ensure project root is in sys.path
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+try:
+    from dashboard.utils.api_client import get_api_client
+    from dashboard.utils.auth_ui import require_auth
+    from dashboard.utils.i18n import t
+except ModuleNotFoundError:
+    from utils.api_client import get_api_client
+    from utils.auth_ui import require_auth
+    from utils.i18n import t
+
+# Enforce authentication
+user = require_auth()
+client = get_api_client()
+
+
+def fmt_num(val) -> str:
+    """Safely format numbers with thousands separators without crashing on strings, Decimal, or None."""
+    try:
+        if val is None or val == "" or str(val).strip().lower() == "nan":
+            return "0"
+        return f"{int(float(val)):,}"
+    except (ValueError, TypeError):
+        return str(val)
+
+# --- Sidebar: Channel Set Selector ---
+with st.sidebar:
+    st.markdown(f"### 📁 {t('active_set')}")
+    channel_sets = client.get_channel_sets()
+
+    if not channel_sets:
+        st.warning(t("no_channels"))
+        # Auto-create first set if empty
+        try:
+            created = client.create_channel_set({
+                "name": "Primary",
+                "description": "Primary competitor monitoring set"
+            })
+            channel_sets = [created]
+        except Exception:
+            channel_sets = []
+
+    set_options = {s["name"]: s["id"] for s in channel_sets}
+    active_set_id = user.get("active_set_id")
+    
+    current_idx = 0
+    if active_set_id:
+        for idx, (name, s_id) in enumerate(set_options.items()):
+            if s_id == active_set_id:
+                current_idx = idx
+                break
+
+    if set_options:
+        selected_set_name = st.selectbox(
+            t("select_set"),
+            options=list(set_options.keys()),
+            index=current_idx,
+            key="active_set_select"
+        )
+        selected_set_id = set_options.get(selected_set_name)
+        if selected_set_id and selected_set_id != active_set_id:
+            try:
+                client.activate_channel_set(selected_set_id)
+                user["active_set_id"] = selected_set_id
+                st.session_state["user"] = user
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to switch set: {e}")
+    else:
+        selected_set_id = None
+
+    # Check API keys warning
+    if not user.get("youtube_api_key_valid"):
+        st.warning(f"⚠️ {t('key_invalid')}. Configure YouTube Data API key in profile.")
+    if not user.get("gemini_api_key_valid"):
+        st.info("💡 Gemini API Key is not set. Add it in profile for AI analysis.")
+
+    st.markdown("---")
+
+
+# --- Main Dashboard Header ---
+col_head, col_btn = st.columns([2, 2])
+with col_head:
+    st.title(f"🎬 {t('app_title')}")
+    st.caption(f"{t('app_tagline')} | {t('active_set')}: **{selected_set_name if set_options else 'None'}**")
+
+with col_btn:
+    st.write("")
+    col_r1, col_r2, col_r3 = st.columns([1, 1, 1])
+    with col_r1:
+        if st.button(f"🔄 {t('sync_now')}", use_container_width=True):
+            if selected_set_id:
+                with st.spinner(t("syncing")):
+                    try:
+                        res = client.sync_channel_set(selected_set_id)
+                        synced_count = res.get('snapshots_synced', res.get('snapshots_saved', 0))
+                        if synced_count > 0:
+                            st.success(f"{t('sync_success')} ({synced_count})")
+                        else:
+                            st.warning("Синхронизировано: 0. Проверьте, добавлены ли каналы в этот набор и валиден ли ключ YouTube в Профиле.")
+                        st.rerun()
+                    except Exception as e:
+                        err_msg = str(e)
+                        if hasattr(e, "response") and e.response is not None:
+                            try:
+                                err_msg = e.response.json().get("detail", err_msg)
+                            except Exception:
+                                pass
+                        st.error(f"Sync error: {err_msg}")
+    with col_r2:
+        if st.button(f"📢 {t('btn_ai_digest')}", use_container_width=True):
+            if selected_set_id:
+                with st.spinner(t("spinner_gen_digest")):
+                    try:
+                        d_res = client.get_channel_set_digest(selected_set_id)
+                        st.session_state["active_digest"] = d_res.get("digest")
+                    except Exception as e:
+                        st.error(f"Digest error: {e}")
+    with col_r3:
+        if st.button(f"🔄 {t('btn_refresh')}", use_container_width=True):
+            st.rerun()
+
+if "active_digest" in st.session_state and st.session_state["active_digest"]:
+    with st.expander(f"📢 **{t('expander_executive_digest')}**", expanded=True):
+        st.markdown(st.session_state["active_digest"])
+        if st.button(t("btn_hide_digest"), key="close_digest"):
+            del st.session_state["active_digest"]
+            st.rerun()
+
+# --- Section 1: KPI Cards ---
+kpis = client.get_kpis(set_id=selected_set_id)
+
+col1, col2, col3, col4, col5 = st.columns(5)
+col1.metric(t("kpi_channels"), kpis.get("total_channels", 0))
+col2.metric(t("kpi_videos"), kpis.get("total_videos", 0))
+col3.metric(t("kpi_views"), fmt_num(kpis.get("total_views", 0)))
+col4.metric(t("kpi_avg_views"), fmt_num(kpis.get("avg_views_per_video", 0)))
+col5.metric(t("kpi_viral_hits"), kpis.get("viral_hits_count", 0))
+
+st.markdown("---")
+
+# --- Section 2: Top Videos & Virality Breakdown ---
+st.subheader(f"🔥 {t('top_videos')}")
+
+# Filter by channel inside this set
+channels = client.get_channels(set_id=selected_set_id)
+channel_options = {t("all_channels"): None}
+for c in channels:
+    label = c.get("title") or c.get("custom_url") or c.get("channel_id")
+    channel_options[label] = c.get("channel_id")
+
+col_ch, col_fmt, col_sort, col_limit = st.columns([3, 2, 3, 1])
+with col_ch:
+    selected_ch_label = st.selectbox(f"🏢 {t('filter_channel')}", options=list(channel_options.keys()))
+with col_fmt:
+    format_options = {
+        t("format_all"): "all",
+        t("format_long"): "long",
+        t("format_short"): "short"
+    }
+    selected_fmt_label = st.selectbox(f"🎬 {t('filter_format')}", options=list(format_options.keys()))
+    selected_format = format_options.get(selected_fmt_label, "all")
+with col_sort:
+    sort_options = {
+        t("sort_views"): "views",
+        t("sort_outlier"): "outlier",
+        t("sort_vph"): "vph",
+        t("sort_published"): "published_at",
+        t("sort_views_subs"): "views_to_subs"
+    }
+    selected_sort_label = st.selectbox(f"📊 {t('sort_by')}", options=list(sort_options.keys()))
+    selected_sort = sort_options.get(selected_sort_label, "views")
+with col_limit:
+    selected_limit = st.selectbox("Limit:", options=[10, 20, 50, 100], index=1)
+
+selected_channel_id = channel_options.get(selected_ch_label)
+videos = client.get_videos(
+    set_id=selected_set_id,
+    channel_id=selected_channel_id,
+    format_filter=selected_format,
+    sort_by=selected_sort,
+    limit=selected_limit
+)
+
+if not videos:
+    st.info(t("no_channels"))
+else:
+    df = pd.DataFrame(videos)
+    df["youtube_link"] = "https://www.youtube.com/watch?v=" + df["video_id"].astype(str)
+    df["badges_str"] = df["badges"].apply(lambda b: " ".join(b) if isinstance(b, list) else "")
+
+    # Top Video Chart (Horizontal Bar with rich hover)
+    top_chart_data = df.head(10).copy()
+    top_chart_data["short_title"] = top_chart_data["title"].apply(lambda x: x[:36] + "..." if len(str(x)) > 36 else str(x))
+    top_chart_data["fmt_label"] = top_chart_data["is_short"].apply(lambda s: "📱 Shorts" if s else "🎬 Video")
+    
+    fig = px.bar(
+        top_chart_data,
+        x="view_count",
+        y="short_title",
+        orientation="h",
+        color="outlier_score",
+        color_continuous_scale="Viridis",
+        custom_data=["title", "channel_title", "outlier_score", "velocity_vph", "duration_formatted", "fmt_label"],
+        labels={"view_count": t("views"), "short_title": t("video_title"), "outlier_score": t("outlier_score")},
+        title=f"📊 {t('top_videos')}"
+    )
+    fig.update_traces(
+        hovertemplate="<b>%{custom_data[0]}</b><br>" +
+                      "📺 Channel: <b>%{custom_data[1]}</b><br>" +
+                      "👁️ Views: <b>%{x:,.0f}</b><br>" +
+                      "🚀 Outlier: <b>%{custom_data[2]}x</b><br>" +
+                      "⚡ Velocity: <b>%{custom_data[3]} VPH</b><br>" +
+                      "⏱️ Runtime: <b>%{custom_data[4]}</b> (%{custom_data[5]})<extra></extra>"
+    )
+    fig.update_layout(
+        yaxis={"autorange": "reversed"},
+        height=360,
+        margin={"l": 0, "r": 20, "t": 40, "b": 20},
+        coloraxis_colorbar=dict(title=t("outlier_score"))
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"responsive": True, "displayModeBar": False})
+
+    # Videos List & Factor Analysis Expanders
+    st.markdown(f"#### 📋 {t('top_videos')} ({len(df)})")
+    
+    for idx, v in df.iterrows():
+        # Top-3 podium badges
+        if idx == 0:
+            rank_prefix = "🥇 #1"
+        elif idx == 1:
+            rank_prefix = "🥈 #2"
+        elif idx == 2:
+            rank_prefix = "🥉 #3"
+        else:
+            rank_prefix = f"#{idx+1}"
+
+        outlier_val = float(v.get('outlier_score', 1.0) or 1.0)
+        viral_flair = "🔥 " if outlier_val >= 2.0 else ""
+        badges_display = f" `{v['badges_str']}`" if v["badges_str"] else ""
+        dur_display = f" [{v.get('duration_formatted')}]" if v.get("duration_formatted") and v.get("duration_formatted") != "--:--" else ""
+        
+        expander_title = f"{rank_prefix} | {fmt_num(v.get('view_count', 0))} views | {viral_flair}{outlier_val}x | {v.get('channel_title', '')} — «{v.get('title', '')}»{dur_display}{badges_display}"
+        
+        with st.expander(expander_title):
+            c_thumb, c_stats, c_ai = st.columns([2.5, 3.5, 4])
+            
+            with c_thumb:
+                if v.get("thumbnail_url"):
+                    st.image(v["thumbnail_url"], use_container_width=True)
+                st.link_button(f"▶️ {t('watch_youtube_btn')}", v['youtube_link'], use_container_width=True)
+
+            with c_stats:
+                fmt_tag = "📱 Shorts" if v.get("is_short") else "🎬 Video"
+                st.markdown(f"**Channel:** `{v.get('channel_title', '')}`")
+                if v.get("subscriber_count"):
+                    st.markdown(f"**Subscribers:** `{fmt_num(v.get('subscriber_count', 0))}`")
+                st.markdown(f"**{t('metric_format')}** `{fmt_tag}` ({v.get('duration_formatted', '--:--')})")
+                st.markdown(f"**Views:** **{fmt_num(v.get('view_count', 0))}**")
+                st.markdown(f"**{t('metric_channel_median')}** {fmt_num(v.get('channel_avg_views', 0))}")
+                
+                multiplier_icon = "🔥 " if outlier_val >= 2.0 else ("📈 " if outlier_val >= 1.5 else "")
+                st.markdown(f"**Multiplier (Outlier):** `{multiplier_icon}{outlier_val}x`")
+                if v.get("views_to_subs_pct"):
+                    st.markdown(f"**{t('metric_views_subs')}** `{v.get('views_to_subs_pct', 0.0)}%`")
+                st.markdown(f"**Velocity (VPH):** `{v.get('velocity_vph', 0.0)}`")
+                st.markdown(f"**Engagement (ER):** `{v.get('engagement_rate_pct', 0.0)}%`")
+                st.markdown(f"**Published:** {str(v.get('published_at'))[:10]}")
+
+            with c_ai:
+                st.markdown(f"##### {t('explain_ai_btn')}")
+                explain_key = f"explain_{v['video_id']}"
+                
+                if st.button(f"🔍 {t('explain_ai_btn')}", key=f"btn_{explain_key}"):
+                    with st.spinner(t("ai_analyzing_spinner")):
+                        try:
+                            res = client.explain_video(v["video_id"], set_id=selected_set_id)
+                            st.session_state[explain_key] = res.get("explanation", {})
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+
+                if explain_key in st.session_state:
+                    exp = st.session_state[explain_key]
+                    is_ai = exp.get("is_ai", False)
+                    if is_ai:
+                        m_name = exp.get("model", "gemini-flash-latest")
+                        m_lat = exp.get("latency_ms", 0)
+                        st.caption(f"🧠 **Gemini AI Breakdown** (`{m_name}` • {m_lat} ms)")
+                    else:
+                        fallback_rsn = exp.get("fallback_reason") or "Эвристический расчет метрик"
+                        st.warning(f"⚠️ **Эвристический экспресс-анализ**: {fallback_rsn}")
+                        if not user.get("gemini_api_key_valid"):
+                            st.info("💡 Подключите Gemini API ключ в [Профиле](/profile) для разбора нейросетью.")
+
+                    st.success(f"🎯 **{t('ai_verdict')}:**\n\n{exp.get('verdict', '')}")
+                    st.info(f"🎣 **{t('ai_hook')}:**\n\n{exp.get('hook_analysis', '')}")
+                    st.markdown(f"🔥 **{t('ai_trend')}:**\n\n{exp.get('trend_alignment', '')}")
+                    st.markdown(f"💡 **{t('ai_actionable')}:**\n\n{exp.get('actionable_takeaway', '')}")
+
+                    # Diagnostic Prompt & Raw Response Expander
+                    if exp.get("prompt_used") or exp.get("raw_response"):
+                        with st.expander("🔍 Диагностика вызова ИИ (Промпт и Ответ модели)"):
+                            if exp.get("prompt_used"):
+                                st.markdown("**Отправленный промпт:**")
+                                st.code(exp["prompt_used"], language="markdown")
+                            if exp.get("raw_response"):
+                                st.markdown("**Сырой ответ Gemini:**")
+                                st.code(exp["raw_response"], language="json")

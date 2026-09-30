@@ -1,0 +1,157 @@
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional
+from google.cloud import firestore
+
+from config.settings import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+class FirestoreCache:
+    """
+    Operates high-performance API cache in Google Cloud Firestore (Native Mode)
+    with native TTL policies on the `expires_at` field.
+    """
+    COLLECTION_NAME = "api_cache"
+
+    def __init__(self):
+        settings = get_settings()
+        self.project_id = settings.GCP_PROJECT_ID
+        self._db: Optional[firestore.Client] = None
+        self._memory_cache: Dict[str, Dict[str, Any]] = {}
+
+        try:
+            self._db = firestore.Client(project=self.project_id)
+            logger.info("Firestore client initialized successfully.")
+        except Exception as e:
+            logger.warning(f"Firestore not available ({e}), using in-memory cache fallback.")
+
+    @property
+    def is_connected(self) -> bool:
+        return self._db is not None
+
+    def get(self, cache_key: str) -> Optional[Dict[str, Any]]:
+        """Retrieve cached JSON object if it exists and has not expired."""
+        # 1. Try Firestore
+        if self.is_connected:
+            try:
+                doc_ref = self._db.collection(self.COLLECTION_NAME).document(cache_key)
+                doc = doc_ref.get()
+                if doc.exists:
+                    data = doc.to_dict()
+                    expires_at = data.get("expires_at")
+                    now_utc = datetime.now(timezone.utc)
+                    if expires_at:
+                        if getattr(expires_at, "tzinfo", None) is None:
+                            expires_at = expires_at.replace(tzinfo=timezone.utc)
+                        if expires_at > now_utc:
+                            logger.info(f"Firestore cache HIT: {cache_key}")
+                            return data.get("payload")
+                        else:
+                            logger.info(f"Firestore cache EXPIRED: {cache_key}")
+                            return None
+            except Exception as e:
+                logger.warning(f"Error reading from Firestore cache: {e}")
+
+        # 2. In-memory fallback
+        item = self._memory_cache.get(cache_key)
+        if item:
+            now_utc = datetime.now(timezone.utc)
+            item_exp = item["expires_at"]
+            if getattr(item_exp, "tzinfo", None) is None:
+                item_exp = item_exp.replace(tzinfo=timezone.utc)
+            if item_exp > now_utc:
+                logger.info(f"In-memory cache HIT: {cache_key}")
+                return item["payload"]
+            else:
+                del self._memory_cache[cache_key]
+
+        return None
+
+    def set(self, cache_key: str, payload: Dict[str, Any], ttl_hours: int = 24) -> bool:
+        """Store payload with expires_at for automatic TTL purge."""
+        now_utc = datetime.now(timezone.utc)
+        expires_at = now_utc + timedelta(hours=ttl_hours)
+        doc_data = {
+            "cache_key": cache_key,
+            "payload": payload,
+            "created_at": now_utc,
+            "expires_at": expires_at,
+        }
+
+        # 1. Save in-memory
+        self._memory_cache[cache_key] = doc_data
+
+        # 2. Save in Firestore
+        if self.is_connected:
+            try:
+                doc_ref = self._db.collection(self.COLLECTION_NAME).document(cache_key)
+                doc_ref.set(doc_data)
+                logger.info(f"Saved to Firestore cache with TTL: {cache_key}")
+                return True
+            except Exception as e:
+                logger.warning(f"Error writing to Firestore cache: {e}")
+                return False
+
+        return True
+
+    def register_telegram_subscriber(
+        self,
+        chat_id: int | str,
+        user_info: Optional[Dict[str, Any]] = None,
+        is_allowed: bool = True
+    ):
+        """Register or update a Telegram user subscribed to daily morning digests."""
+        if not self.is_connected:
+            return
+        try:
+            doc_ref = self._db.collection("telegram_subscribers").document(str(chat_id))
+            payload = {
+                "chat_id": str(chat_id),
+                "is_active": True,
+                "is_allowed": is_allowed,
+                "updated_at": datetime.now(timezone.utc),
+            }
+            if user_info:
+                payload.update({
+                    "username": user_info.get("username"),
+                    "first_name": user_info.get("first_name"),
+                })
+            doc_ref.set(payload, merge=True)
+            logger.info(f"Registered Telegram subscriber: {chat_id} (allowed={is_allowed})")
+        except Exception as e:
+            logger.error(f"Error registering Telegram subscriber: {e}")
+
+    def get_telegram_subscribers(self) -> list[str]:
+        """Get all active and allowed chat IDs subscribed to morning digests."""
+        if not self.is_connected:
+            return []
+        try:
+            docs = (
+                self._db.collection("telegram_subscribers")
+                .where("is_active", "==", True)
+                .where("is_allowed", "==", True)
+                .stream()
+            )
+            return [doc.id for doc in docs]
+        except Exception as e:
+            logger.error(f"Error fetching subscribers from Firestore: {e}")
+            return []
+
+    def get_all_subscribers(self) -> list[Dict[str, Any]]:
+        """Retrieve all recorded Telegram users with their access status for dashboard and admin."""
+        if not self.is_connected:
+            return []
+        try:
+            docs = self._db.collection("telegram_subscribers").stream()
+            results = []
+            for doc in docs:
+                data = doc.to_dict()
+                if "updated_at" in data and isinstance(data["updated_at"], datetime):
+                    data["updated_at"] = data["updated_at"].isoformat()
+                results.append(data)
+            return sorted(results, key=lambda x: str(x.get("updated_at", "")), reverse=True)
+        except Exception as e:
+            logger.error(f"Error listing all subscribers from Firestore: {e}")
+            return []
